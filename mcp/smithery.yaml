@@ -1,0 +1,56 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+# Build configuration
+build:
+  dockerfile: Dockerfile
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: []
+    properties:
+      VECTOR_DB_PROVIDER:
+        type: string
+        enum: ["lance", "chroma", "qdrant"]
+        default: "lance"
+        description: "Vector database provider to use"
+      EMBEDDING_PROVIDER:
+        type: string
+        enum: ["buildin", "ollama"]
+        default: "buildin"
+        description: "Embedding provider to use"
+      EMBEDDING_MODEL:
+        type: string
+        default: "all-MiniLM-L6-v2"
+        description: "Embedding model to use (e.g., all-MiniLM-L6-v2 for buildin, bge-m3:latest for ollama)"
+      EMBEDDING_DIMENSION:
+        type: integer
+        default: 384
+        description: "Embedding dimension (384 for MiniLM, 1024 for bge-m3)"
+      CHROMA_URL:
+        type: string
+        default: "http://localhost:8000"
+        description: "ChromaDB server URL"
+      QDRANT_URL:
+        type: string
+        default: "http://localhost:6333"
+        description: "Qdrant server URL"
+      LANCE_PATH:
+        type: string
+        default: "~/lanceDB"
+        description: "Path for LanceDB data storage"
+      OLLAMA_URL:
+        type: string
+        default: "http://localhost:11434"
+        description: "Ollama server URL"
+      OLLAMA_API_KEY:
+        type: string
+        description: "Optional Ollama API key"
+  commandFunction: |-
+    (config) => ({
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ]
+    })

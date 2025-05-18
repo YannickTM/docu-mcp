@@ -1,0 +1,15 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333" # REST API
+      - "6334:6334" # GRPC
+    volumes:
+      - ./data:/qdrant/storage
+    networks:
+      - n8n_net
+    restart: unless-stopped
+
+networks:
+  n8n_net:
+    driver: bridge

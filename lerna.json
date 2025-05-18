@@ -1,0 +1,15 @@
+{
+  "version": "independent",
+  "npmClient": "npm",
+  "useWorkspaces": true,
+  "hoist": true,
+  "packages": ["docusaurus", "mcp", "qdrant"],
+  "command": {
+    "version": {
+      "message": "chore(release): publish"
+    },
+    "bootstrap": {
+      "npmClientArgs": ["--no-package-lock"]
+    }
+  }
+}

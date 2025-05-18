@@ -1,0 +1,42 @@
+name: Manual Deploy with Docusaurus CLI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages via Docusaurus CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Configure git
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          
+      - name: Install root dependencies
+        run: npm install
+        
+      - name: Install docusaurus dependencies
+        working-directory: ./docusaurus
+        run: npm install
+        
+      - name: Deploy to GitHub Pages
+        working-directory: ./docusaurus
+        env:
+          GIT_USER: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run deploy

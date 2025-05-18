@@ -1,0 +1,15 @@
+{
+  "name": "qdrant",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "docker-compose -f docker-compose.yml up",
+    "stop": "docker-compose -f docker-compose.yml stop",
+    "start": "docker-compose -f docker-compose.yml up -d",
+    "clean": "docker-compose -f docker-compose.yml down && rm -rf data",
+    "build": ""
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
