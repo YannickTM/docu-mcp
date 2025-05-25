@@ -1,6 +1,6 @@
 /**
  * Collection schema definitions for vector databases
- * 
+ *
  * This module centralizes all schema definitions for different collection types
  * to ensure consistent structure across vector database implementations.
  */
@@ -14,7 +14,7 @@ import { documentationSchema } from "./documentation.js";
 import { diagramsSchema } from "./diagrams.js";
 import { mergedDocumentationSchema } from "./merged-documentation.js";
 import { mergedDiagramsSchema } from "./merged-diagrams.js";
-import { CollectionSchemaMap } from "./types.js";
+import type { CollectionSchemaMap } from "./types.js";
 
 /**
  * All available collection schemas mapped by collection name
@@ -32,9 +32,17 @@ export const collectionSchemas: CollectionSchemaMap = {
  * @param collectionName The name of the collection
  * @returns The schema for the collection or the default code_chunks schema if not found
  */
-export function getCollectionSchema(collectionName: string): CollectionSchemaMap[string] {
+export function getCollectionSchema(
+  collectionName: string,
+): CollectionSchemaMap[string] {
   return collectionSchemas[collectionName] || collectionSchemas.code_chunks;
 }
 
 // Export individual schemas
-export { codeChunksSchema, documentationSchema, diagramsSchema, mergedDocumentationSchema, mergedDiagramsSchema };
+export {
+  codeChunksSchema,
+  documentationSchema,
+  diagramsSchema,
+  mergedDocumentationSchema,
+  mergedDiagramsSchema,
+};

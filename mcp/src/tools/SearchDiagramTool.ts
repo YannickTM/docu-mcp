@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
 import { collectionExists, search } from "../services/vectordb.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Interface for diagram search result
  */
@@ -33,7 +33,9 @@ class SearchDiagramTool {
   /**
    * Builds a filter from search filters
    */
-  private buildFilter(filter?: DiagramSearchFilter): Record<string, any> | undefined {
+  private buildFilter(
+    filter?: DiagramSearchFilter,
+  ): Record<string, any> | undefined {
     if (!filter) return undefined;
 
     const conditions = [];
@@ -72,26 +74,27 @@ class SearchDiagramTool {
     query: string,
     limit: number = 10,
     filter?: DiagramSearchFilter,
-    collectionName: string = "diagrams"
   ): Promise<DiagramSearchResult[]> {
     try {
       const collections = ["diagrams", "merged_diagrams"];
       const results: DiagramSearchResult[] = [];
-      
+
       // Generate embedding for the query only once
       const embeddingResult = await createEmbedding(query);
       if (embeddingResult.error) {
         throw new Error(
-          `Failed to generate embedding for query: ${embeddingResult.error}`
+          `Failed to generate embedding for query: ${embeddingResult.error}`,
         );
       }
-      
+
       // Search in both collections
       for (const collection of collections) {
         // Skip if collection doesn't exist
         if (!(await collectionExists(collection))) {
-          console.warn(
-            chalk.yellow(`Collection ${collection} does not exist, skipping...`)
+          logger.warn(
+            chalk.yellow(
+              `Collection ${collection} does not exist, skipping...`,
+            ),
           );
           continue;
         }
@@ -99,11 +102,9 @@ class SearchDiagramTool {
         const filterQuery = this.buildFilter(filter);
 
         // Log search info
-        console.warn(
-          chalk.blue(`Searching ${collection} for: "${query}"`)
-        );
+        logger.warn(chalk.blue(`Searching ${collection} for: "${query}"`));
         if (filterQuery) {
-          console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+          logger.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
         }
 
         // Search in VectorDB
@@ -111,7 +112,7 @@ class SearchDiagramTool {
           collection,
           embeddingResult.embedding,
           limit,
-          filterQuery
+          filterQuery,
         );
 
         // Map results to DiagramSearchResult interface
@@ -126,18 +127,18 @@ class SearchDiagramTool {
           }`,
           title: payload.title || "",
           diagramType: payload.diagramType || "",
-          description: payload.description || ""
+          description: payload.description || "",
         }));
-        
+
         results.push(...mappedResults);
       }
-      
+
       // Sort combined results by similarity and limit
       return results
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, limit);
     } catch (error) {
-      console.error(chalk.red(`Error searching diagrams:`), error);
+      logger.error(chalk.red(`Error searching diagrams:`), error as Error);
       throw new Error(`Failed to search diagrams: ${(error as Error).message}`);
     }
   }
@@ -163,7 +164,9 @@ class SearchDiagramTool {
       // Build filters if provided
       const filter: DiagramSearchFilter = {};
       if (diagramType) {
-        filter.diagramType = Array.isArray(diagramType) ? diagramType : [diagramType];
+        filter.diagramType = Array.isArray(diagramType)
+          ? diagramType
+          : [diagramType];
       }
       if (directory) filter.directory = directory;
       if (filename) filter.filename = filename;
@@ -177,7 +180,7 @@ class SearchDiagramTool {
 
       if (filter.diagramType) {
         options.push(
-          `Diagram Types: ${chalk.yellow(filter.diagramType.join(", "))}`
+          `Diagram Types: ${chalk.yellow(filter.diagramType.join(", "))}`,
         );
       }
       if (filter.directory) {
@@ -189,10 +192,10 @@ class SearchDiagramTool {
 
       const header = chalk.blue(`🔍 Searching Diagrams`);
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -204,7 +207,6 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
         query,
         limit,
         Object.keys(filter).length > 0 ? filter : undefined,
-        collectionName
       )
         .then((results) => ({
           content: [
@@ -223,11 +225,11 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                     location: result.location,
                     title: result.title,
                     diagramType: result.diagramType,
-                    description: result.description
+                    description: result.description,
                   })),
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -242,7 +244,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -259,7 +261,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -312,7 +314,8 @@ Parameters explained:
           { type: "string" },
           { type: "array", items: { type: "string" } },
         ],
-        description: "Filter by diagram type(s) (e.g., 'component', 'flow', 'architecture')",
+        description:
+          "Filter by diagram type(s) (e.g., 'component', 'flow', 'architecture')",
       },
       directory: {
         type: "string",

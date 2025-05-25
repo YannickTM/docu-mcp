@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { QdrantClient } from "@qdrant/js-client-rest";
-
+import { logger } from "../logger.js";
 /**
  * Interface for vector points to be stored in Qdrant
  */
@@ -32,26 +32,25 @@ const client = createClient();
 
 export const healthCheck = async (): Promise<boolean> => {
   try {
-    const response = await client.api("service").healthz({});
-    return response.status === 200;
+    const response = await client.versionInfo();
+    return response.title === "qdrant - vector search engine";
   } catch (error) {
-    console.error("Qdrant health check failed:", error);
+    logger.error("Qdrant health check failed:", error as Error);
     throw error;
   }
 };
 
 export const collectionExists = async (
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> => {
   try {
-    await client
-      .api("collections")
-      .getCollection({ collection_name: collectionName });
-    return true;
+    const response = await client.collectionExists(collectionName);
+    return response.exists;
   } catch (error: any) {
-    if (error.status === 404) {
-      return false;
-    }
+    logger.error(
+      `Error checking collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -59,11 +58,10 @@ export const collectionExists = async (
 export const createCollection = async (
   collectionName: string,
   vectorSize: number,
-  distance: "Cosine" | "Euclid" | "Dot" = "Cosine"
+  distance: "Cosine" | "Euclid" | "Dot" = "Cosine",
 ): Promise<boolean> => {
   try {
-    await client.api("collections").createCollection({
-      collection_name: collectionName,
+    await client.createCollection(collectionName, {
       vectors: {
         size: vectorSize,
         distance,
@@ -71,18 +69,20 @@ export const createCollection = async (
     });
     return true;
   } catch (error) {
-    console.error(`Error creating collection ${collectionName}:`, error);
+    logger.error(
+      `Error creating collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
 
 export const upsertPoints = async (
   collectionName: string,
-  points: VectorPoint[]
+  points: VectorPoint[],
 ): Promise<boolean> => {
   try {
-    const respo = await client.api("points").upsertPoints({
-      collection_name: collectionName,
+    await client.upsert(collectionName, {
       points: points.map((point) => ({
         id: point.id,
         vector: point.vector,
@@ -92,7 +92,10 @@ export const upsertPoints = async (
     });
     return true;
   } catch (error) {
-    console.error(`Error upserting points to ${collectionName}:`, error);
+    logger.error(
+      `Error upserting points to ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -101,11 +104,10 @@ export const search = async (
   collectionName: string,
   vector: number[],
   limit: number = 10,
-  filter?: Record<string, any>
+  filter?: Record<string, any>,
 ): Promise<any[]> => {
   try {
     const searchParams: any = {
-      collection_name: collectionName,
       vector,
       limit,
       with_payload: true,
@@ -116,16 +118,17 @@ export const search = async (
       searchParams.filter = filter;
     }
 
-    const response = await client.api("points").searchPoints(searchParams);
-    console.warn(
-      `Searching collection ${collectionName} with vector: ${JSON.stringify(
-        vector
-      )}`
+    const response = await client.search(collectionName, searchParams);
+    logger.info(
+      `Searched collection ${collectionName}, found ${response.length} results`,
     );
 
-    return (response as any).data.result || [];
+    return response || [];
   } catch (error) {
-    console.error(`Error searching in collection ${collectionName}:`, error);
+    logger.error(
+      `Error searching in collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -138,7 +141,7 @@ export const search = async (
 export function createPoint(
   id: string | number,
   vector: number[],
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
 ): VectorPoint {
   // Ensure ID is converted to a number if it's a numeric string
   const pointId =
@@ -154,21 +157,24 @@ export function createPoint(
 /**
  * Delete a collection from QdrantDB
  */
-export const deleteCollection = async (collectionName: string): Promise<boolean> => {
+export const deleteCollection = async (
+  collectionName: string,
+): Promise<boolean> => {
   try {
     // Check if collection exists
     if (await collectionExists(collectionName)) {
-      await client.api("collections").deleteCollection({ 
-        collection_name: collectionName 
-      });
-      
-      console.warn(`Deleted QdrantDB collection '${collectionName}'`);
+      await client.deleteCollection(collectionName);
+
+      logger.warn(`Deleted QdrantDB collection '${collectionName}'`);
       return true;
     }
-    
+
     return false;
   } catch (error) {
-    console.error(`Error deleting collection ${collectionName}:`, error);
+    logger.error(
+      `Error deleting collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };

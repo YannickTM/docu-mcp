@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Tool for writing content to files in the filesystem
  * Provides options for directory creation and overwrite protection
@@ -14,7 +14,7 @@ class WriteFileTool {
     content: string,
     encoding: BufferEncoding = "utf-8",
     createDirectory: boolean = true,
-    overwrite: boolean = true
+    overwrite: boolean = true,
   ) {
     // Check file existence for accurate created vs updated status
     const fileExists = await filesystem.fileExists(filePath);
@@ -29,9 +29,13 @@ class WriteFileTool {
       throw new Error(result.message);
     }
 
+    if (!result.data) {
+      throw new Error("Write operation did not return file data");
+    }
+
     return {
       success: true,
-      path: result.data!.path,
+      path: result.data.path,
       size: Buffer.byteLength(content, encoding),
       encoding,
       created: !fileExists,
@@ -78,10 +82,10 @@ class WriteFileTool {
       ];
 
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -94,7 +98,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
         content,
         encoding as BufferEncoding,
         createDirectory,
-        overwrite
+        overwrite,
       )
         .then((result) => {
           return {
@@ -118,7 +122,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                     status: "failed",
                   },
                   null,
-                  2
+                  2,
                 ),
               },
             ],
@@ -136,7 +140,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

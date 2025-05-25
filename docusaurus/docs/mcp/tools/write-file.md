@@ -9,6 +9,7 @@ The `write_file` tool writes or updates content to a file at a specified path wi
 ## Overview
 
 This tool provides capabilities to:
+
 - Write content to files using both absolute and relative paths
 - Automatically create parent directories when needed
 - Control whether existing files should be overwritten
@@ -17,31 +18,32 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| filePath | string | Yes | - | Path to the file to write (absolute or relative to the project root) |
-| content | string | Yes | - | Content to write to the file |
-| encoding | string | No | "utf-8" | File encoding (supports "utf-8", "ascii", "binary", etc.) |
-| createDirectory | boolean | No | true | Create parent directories if they don't exist |
-| overwrite | boolean | No | true | Whether to overwrite the file if it already exists |
+| Name            | Type    | Required | Default | Description                                                          |
+| --------------- | ------- | -------- | ------- | -------------------------------------------------------------------- |
+| filePath        | string  | Yes      | -       | Path to the file to write (absolute or relative to the project root) |
+| content         | string  | Yes      | -       | Content to write to the file                                         |
+| encoding        | string  | No       | "utf-8" | File encoding (supports "utf-8", "ascii", "binary", etc.)            |
+| createDirectory | boolean | No       | true    | Create parent directories if they don't exist                        |
+| overwrite       | boolean | No       | true    | Whether to overwrite the file if it already exists                   |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| success | boolean | Indicates if the operation was successful |
-| path | string | The absolute path to the file |
-| size | number | The size of the written content in bytes |
-| encoding | string | The encoding used to write the file |
-| created | boolean | Whether the file was newly created (vs. updated) |
-| modified | string | ISO string of the file's modification time |
-| message | string | A descriptive message about the operation |
+| Property | Type    | Description                                      |
+| -------- | ------- | ------------------------------------------------ |
+| success  | boolean | Indicates if the operation was successful        |
+| path     | string  | The absolute path to the file                    |
+| size     | number  | The size of the written content in bytes         |
+| encoding | string  | The encoding used to write the file              |
+| created  | boolean | Whether the file was newly created (vs. updated) |
+| modified | string  | ISO string of the file's modification time       |
+| message  | string  | A descriptive message about the operation        |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "write_file",
@@ -55,6 +57,7 @@ The tool returns an object with the following properties:
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -91,7 +94,7 @@ The `WriteFileTool` is implemented in `/mcp/src/tools/WriteFileTool.ts`. Key imp
 
 - Uses Node.js's `fs/promises` API for asynchronous file operations
 - Resolves relative paths to absolute paths using the current working directory
-- Creates parent directories recursively when needed 
+- Creates parent directories recursively when needed
 - Supports configurable overwrite protection with different write flags
 - Returns detailed metadata about the operation
 - Includes logging with chalk-formatted output for console visibility
@@ -104,30 +107,34 @@ class WriteFileToolImplementation {
     content: string,
     encoding: BufferEncoding = "utf-8",
     createDirectory: boolean = true,
-    overwrite: boolean = true
+    overwrite: boolean = true,
   ) {
     // Resolve the absolute path
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-    
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(process.cwd(), filePath);
+
     // Check if file exists and verify overwrite permission
     const fileExists = await this.checkFileExists(absolutePath);
     if (fileExists && !overwrite) {
-      throw new Error(`File already exists at ${absolutePath} and overwrite is set to false`);
+      throw new Error(
+        `File already exists at ${absolutePath} and overwrite is set to false`,
+      );
     }
-    
+
     // Create parent directories if needed
     if (createDirectory) {
       const directory = path.dirname(absolutePath);
       await fs.mkdir(directory, { recursive: true });
     }
-    
+
     // Write file content
-    const writeFlag = overwrite ? 'w' : 'wx'; // 'wx' = write only if file doesn't exist
-    await fs.writeFile(absolutePath, content, { 
+    const writeFlag = overwrite ? "w" : "wx"; // 'wx' = write only if file doesn't exist
+    await fs.writeFile(absolutePath, content, {
       encoding,
-      flag: writeFlag
+      flag: writeFlag,
     });
-    
+
     // Return formatted response with file information
     return {
       success: true,
@@ -136,7 +143,9 @@ class WriteFileToolImplementation {
       encoding,
       created: !fileExists,
       modified: (await fs.stat(absolutePath)).mtime.toISOString(),
-      message: fileExists ? `File updated successfully` : `File created successfully`
+      message: fileExists
+        ? `File updated successfully`
+        : `File created successfully`,
     };
   }
 }

@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-import { DirectoryEntry } from "../services/filesystem.js";
-
+import type { DirectoryEntry } from "../services/filesystem.js";
+import { logger } from "../services/logger.js";
 /**
  * Interface for file/directory information returned by the tool
  */
@@ -24,7 +24,7 @@ class ReadDirTool {
     recursive: boolean = false,
     includeHidden: boolean = false,
     fileExtensions?: string[],
-    includeStats: boolean = true
+    includeStats: boolean = true,
   ): Promise<FileInfo[]> {
     // Use filesystem functions to read directory
     const result = await filesystem.readDirectory(directoryPath, {
@@ -37,8 +37,12 @@ class ReadDirTool {
       throw new Error(result.message);
     }
 
+    if (!result.data || !Array.isArray(result.data.entries)) {
+      throw new Error("Invalid directory listing result");
+    }
+
     // Convert entries to FileInfo format (most properties already match)
-    const entries = result.data!.entries.map((entry: DirectoryEntry) => {
+    const entries = result.data.entries.map((entry: DirectoryEntry) => {
       const fileInfo: FileInfo = {
         name: entry.name,
         path: entry.path,
@@ -91,10 +95,10 @@ class ReadDirTool {
       }
 
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -107,7 +111,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
         recursive,
         includeHidden,
         fileExtensions,
-        includeStats
+        includeStats,
       )
         .then((result) => {
           return {
@@ -131,7 +135,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                     status: "failed",
                   },
                   null,
-                  2
+                  2,
                 ),
               },
             ],
@@ -149,7 +153,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

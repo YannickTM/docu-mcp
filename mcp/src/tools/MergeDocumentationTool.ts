@@ -1,6 +1,7 @@
 // Fixed chalk import for ESM
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
+import { logger } from "../services/logger.js";
 import {
   collectionExists,
   search,
@@ -22,7 +23,7 @@ class DocumentationMerger {
       data.sourceDocumentations.length < 2
     ) {
       throw new Error(
-        "Invalid sourceDocumentations: must be an array with at least 2 document IDs"
+        "Invalid sourceDocumentations: must be an array with at least 2 document IDs",
       );
     }
 
@@ -32,7 +33,7 @@ class DocumentationMerger {
       !["summarize", "combine", "synthesize"].includes(data.mergeStrategy)
     ) {
       throw new Error(
-        "Invalid mergeStrategy: must be 'summarize', 'combine', or 'synthesize'"
+        "Invalid mergeStrategy: must be 'summarize', 'combine', or 'synthesize'",
       );
     }
 
@@ -51,7 +52,7 @@ class DocumentationMerger {
     }
     if (typeof data.readyToIndexTheMergedDocumentation !== "boolean") {
       throw new Error(
-        "Invalid readyToIndexTheMergedDocumentation: must be a boolean"
+        "Invalid readyToIndexTheMergedDocumentation: must be a boolean",
       );
     }
     if (
@@ -65,13 +66,13 @@ class DocumentationMerger {
     }
     if (data.readyToIndexTheMergedDocumentation && !data.mergedDocumentation) {
       throw new Error(
-        "readyToIndexTheMergedDocumentation is true but mergedDocumentation is missing"
+        "readyToIndexTheMergedDocumentation is true but mergedDocumentation is missing",
       );
     }
 
     // Fetch source documentations if needed
-    let sourceDocContents: any[] = [];
-    let sourceFiles: string[] = [];
+    const sourceDocContents: any[] = [];
+    const sourceFiles: string[] = [];
 
     try {
       for (const docId of data.sourceDocumentations) {
@@ -91,7 +92,7 @@ class DocumentationMerger {
           "documentation",
           dummyEmbedding,
           1,
-          filter
+          filter,
         );
 
         if (results.length > 0) {
@@ -107,16 +108,16 @@ class DocumentationMerger {
             sourceFiles.push(doc.filePath);
           }
         } else {
-          console.warn(chalk.yellow(`Documentation ${docId} not found`));
+          logger.warn(chalk.yellow(`Documentation ${docId} not found`));
         }
       }
     } catch (error) {
-      console.error(
+      logger.error(
         chalk.red(
           `Error fetching source documentations: ${
             error instanceof Error ? error.message : String(error)
-          }`
-        )
+          }`,
+        ),
       );
     }
 
@@ -130,14 +131,14 @@ class DocumentationMerger {
         const collection = "merged_documentation";
 
         if (!query) {
-          console.error(chalk.red("Invalid semanticSearch: missing query"));
+          logger.error(chalk.red("Invalid semanticSearch: missing query"));
         } else {
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.error(chalk.red(`Collection ${collection} does not exist`));
           } else {
-            console.warn(
-              chalk.blue(`Searching ${collection} collection for: "${query}"`)
+            logger.warn(
+              chalk.blue(`Searching ${collection} collection for: "${query}"`),
             );
 
             // Build filter if provided
@@ -164,9 +165,9 @@ class DocumentationMerger {
 
               if (conditions.length > 0) {
                 filterQuery = { must: conditions };
-                console.warn(
+                logger.warn(
                   `With filters:`,
-                  JSON.stringify(filterQuery, null, 2)
+                  JSON.stringify(filterQuery, null, 2),
                 );
               }
             }
@@ -174,10 +175,10 @@ class DocumentationMerger {
             // Generate embedding for the query
             const embeddingResult = await createEmbedding(query);
             if (embeddingResult.error) {
-              console.error(
+              logger.error(
                 chalk.red(
-                  `Error generating embedding: ${embeddingResult.error}`
-                )
+                  `Error generating embedding: ${embeddingResult.error}`,
+                ),
               );
             } else {
               // Perform the search
@@ -186,7 +187,7 @@ class DocumentationMerger {
                 collection,
                 embeddingResult.embedding,
                 limit,
-                filterQuery
+                filterQuery,
               );
 
               // Process the results
@@ -200,33 +201,54 @@ class DocumentationMerger {
                 mergedFromCount: payload.mergedFromCount || 0,
               }));
 
-              console.warn(
+              logger.warn(
                 chalk.green(
-                  `Found ${searchResults.length} results in ${collection} collection`
-                )
+                  `Found ${searchResults.length} results in ${collection} collection`,
+                ),
               );
             }
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
 
     if (data.readyToIndexTheMergedDocumentation && data.mergedDocumentation) {
       try {
+        // Import getEmbeddingDimension and createCollection
+        const { getEmbeddingDimension } = await import(
+          "../services/embeddings.js"
+        );
+        const { createCollection: createColl } = await import(
+          "../services/vectordb.js"
+        );
+
+        // Ensure the merged_documentation collection exists
+        if (!(await collectionExists("merged_documentation"))) {
+          const embeddingDimension = getEmbeddingDimension();
+          const created = await createColl(
+            "merged_documentation",
+            embeddingDimension,
+          );
+          if (!created) {
+            throw new Error(`Failed to create collection merged_documentation`);
+          }
+          logger.info(chalk.green(`Created merged_documentation collection`));
+        }
+
         // Generate embedding for the merged documentation content
         const result = await createEmbedding(data.mergedDocumentation);
 
         if (result.error) {
-          console.error(
-            chalk.red(`Error generating embedding: ${result.error}`)
+          logger.error(
+            chalk.red(`Error generating embedding: ${result.error}`),
           );
           throw new Error(`Failed to generate embedding: ${result.error}`);
         }
@@ -250,26 +272,26 @@ class DocumentationMerger {
         const point = createPoint(
           `merged_doc_${Date.now()}_${Math.floor(Math.random() * 1000)}`, // Generate a unique ID
           result.embedding,
-          metadata
+          metadata,
         );
 
         // Add to the merged_documentation collection
         const success = await upsertPoints("merged_documentation", [point]);
 
         if (success) {
-          console.error(
-            chalk.green(`Merged documentation indexed successfully`)
+          logger.error(
+            chalk.green(`Merged documentation indexed successfully`),
           );
         } else {
-          console.error(chalk.red(`Failed to index merged documentation`));
+          logger.error(chalk.red(`Failed to index merged documentation`));
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error indexing merged documentation: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -332,8 +354,8 @@ class DocumentationMerger {
         header.length,
         thought.length,
         sourceDocumentations.join(", ").length,
-        (mergedDocumentation ?? "").length
-      ) + 4
+        (mergedDocumentation ?? "").length,
+      ) + 4,
     );
 
     // Ensure displays aren't too long
@@ -387,7 +409,7 @@ class DocumentationMerger {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -407,7 +429,7 @@ class DocumentationMerger {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -423,7 +445,7 @@ class DocumentationMerger {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

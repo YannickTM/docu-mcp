@@ -9,6 +9,7 @@ The `search_user_guide` tool enables semantic search for previously generated us
 ## Overview
 
 This tool provides capabilities to:
+
 - Search for user guides using natural language queries
 - Find guides tailored for specific audiences
 - Filter results by target audience, topic, or related files
@@ -27,53 +28,54 @@ The `search_user_guide` tool leverages the vector database to enable semantic se
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| query | string | Yes | - | Natural language query to search for |
-| limit | number | No | 10 | Maximum number of results to return |
-| targetAudience | string | No | - | Filter by intended audience (e.g., 'developers', 'end-users', 'administrators') |
-| topic | string | No | - | Filter by user guide topic |
-| relatedFile | string | No | - | Filter by files referenced in the guide |
+| Name           | Type   | Required | Default | Description                                                                     |
+| -------------- | ------ | -------- | ------- | ------------------------------------------------------------------------------- |
+| query          | string | Yes      | -       | Natural language query to search for                                            |
+| limit          | number | No       | 10      | Maximum number of results to return                                             |
+| targetAudience | string | No       | -       | Filter by intended audience (e.g., 'developers', 'end-users', 'administrators') |
+| topic          | string | No       | -       | Filter by user guide topic                                                      |
+| relatedFile    | string | No       | -       | Filter by files referenced in the guide                                         |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| query | string | The original search query |
-| totalResults | number | Total number of user guides found |
-| results | array | Array of user guide search results |
+| Property     | Type   | Description                        |
+| ------------ | ------ | ---------------------------------- |
+| query        | string | The original search query          |
+| totalResults | number | Total number of user guides found  |
+| results      | array  | Array of user guide search results |
 
 Each result in the array contains:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| content | string | The full user guide content |
-| similarity | number | Similarity score between query and guide (0-1) |
-| topic | string | The main topic of the user guide |
-| targetAudience | string | The intended audience for the guide |
-| sections | string[] | List of sections in the guide |
-| relatedFiles | string[] | Files referenced in the guide |
-| generatedFrom | object | Sources used to generate the guide |
-| location | string | Reference location (format: ```user_guide: { topic }```) |
-| createdAt | string | Timestamp when the guide was created |
+| Property       | Type     | Description                                          |
+| -------------- | -------- | ---------------------------------------------------- |
+| content        | string   | The full user guide content                          |
+| similarity     | number   | Similarity score between query and guide (0-1)       |
+| topic          | string   | The main topic of the user guide                     |
+| targetAudience | string   | The intended audience for the guide                  |
+| sections       | string[] | List of sections in the guide                        |
+| relatedFiles   | string[] | Files referenced in the guide                        |
+| generatedFrom  | object   | Sources used to generate the guide                   |
+| location       | string   | Reference location (format: `user_guide: { topic }`) |
+| createdAt      | string   | Timestamp when the guide was created                 |
 
 ### GeneratedFrom Object
 
 The `generatedFrom` object tracks all sources used to create the guide:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| documentation | string[] | Documentation files used |
-| diagrams | string[] | Diagram files used |
+| Property            | Type     | Description                     |
+| ------------------- | -------- | ------------------------------- |
+| documentation       | string[] | Documentation files used        |
+| diagrams            | string[] | Diagram files used              |
 | mergedDocumentation | string[] | Merged documentation files used |
-| mergedDiagrams | string[] | Merged diagram files used |
-| codebase | string[] | Codebase files used |
+| mergedDiagrams      | string[] | Merged diagram files used       |
+| codebase            | string[] | Codebase files used             |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "search_user_guide",
@@ -86,6 +88,7 @@ The `generatedFrom` object tracks all sources used to create the guide:
 ```
 
 **Response**:
+
 ```json
 {
   "query": "getting started with authentication",
@@ -96,7 +99,12 @@ The `generatedFrom` object tracks all sources used to create the guide:
       "similarity": 0.9234,
       "topic": "Authentication Setup",
       "targetAudience": "developers",
-      "sections": ["Prerequisites", "Basic Setup", "Advanced Configuration", "Testing"],
+      "sections": [
+        "Prerequisites",
+        "Basic Setup",
+        "Advanced Configuration",
+        "Testing"
+      ],
       "relatedFiles": ["/src/auth/AuthService.js", "/src/auth/JWT.js"],
       "generatedFrom": {
         "documentation": ["/docs/auth/README.md"],
@@ -203,6 +211,7 @@ The `SearchUserGuideTool` is implemented in `/mcp/src/tools/SearchUserGuideTool.
 - Handles error cases gracefully, including missing collections
 
 Key features of the implementation:
+
 - Maintains full provenance of guide generation
 - Supports multi-criteria filtering
 - Returns results sorted by relevance

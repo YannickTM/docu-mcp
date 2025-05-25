@@ -9,6 +9,7 @@ The `generate_documentation` tool creates comprehensive documentation using a se
 ## Overview
 
 This tool provides capabilities to:
+
 - Generate detailed documentation using a sequential thinking process
 - Support multi-step reasoning and exploration of code
 - Allow for revision and branching of thoughts
@@ -31,44 +32,44 @@ Unlike traditional documentation generators, this tool uses a sequential thinkin
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| file | string | Yes | - | File path or direct code content to analyze |
-| documentation | string | No | - | Current documentation version (accumulates as thinking progresses) |
-| chapters | array | No | - | Array of chapter titles to include in the documentation |
-| needToReadAdditionalFiles | boolean | Yes | - | Whether additional files need to be read for context |
-| additionalFilesToRead | array | No | - | Array of file paths to read for additional context |
-| needToSearch | boolean | Yes | - | Whether semantic search is needed |
-| seamticSearch | object | No | - | Semantic search configuration (Note: parameter name has a typo in the implementation) |
-| seamticSearch.collection | string | No | - | Collection to search in (codebase, documentation, diagram) |
-| seamticSearch.query | string | No | - | The search query string |
-| seamticSearch.filter | object | No | - | Optional filters for the search |
-| thought | string | Yes | - | The current thinking step content |
-| nextThoughtNeeded | boolean | Yes | - | Whether another thought step is needed |
-| thoughtNumber | number | Yes | - | Current thought number in sequence |
-| totalThoughts | number | Yes | - | Estimated total thoughts needed (minimum 3) |
-| isRevision | boolean | No | false | Whether this thought revises previous thinking |
-| revisesThought | number | No | - | Which thought number is being reconsidered |
-| branchFromThought | number | No | - | Branching point thought number |
-| branchId | string | No | - | Identifier for the current branch |
-| needsMoreThoughts | boolean | No | false | If more thoughts are needed beyond initial estimate |
-| readyToIndexTheDocumentation | boolean | Yes | - | Whether documentation is ready to be stored in the database |
+| Name                         | Type    | Required | Default | Description                                                                           |
+| ---------------------------- | ------- | -------- | ------- | ------------------------------------------------------------------------------------- |
+| file                         | string  | Yes      | -       | File path or direct code content to analyze                                           |
+| documentation                | string  | No       | -       | Current documentation version (accumulates as thinking progresses)                    |
+| chapters                     | array   | No       | -       | Array of chapter titles to include in the documentation                               |
+| needToReadAdditionalFiles    | boolean | Yes      | -       | Whether additional files need to be read for context                                  |
+| additionalFilesToRead        | array   | No       | -       | Array of file paths to read for additional context                                    |
+| needToSearch                 | boolean | Yes      | -       | Whether semantic search is needed                                                     |
+| semanticSearch               | object  | No       | -       | Semantic search configuration (Note: parameter name has a typo in the implementation) |
+| semanticSearch.collection    | string  | No       | -       | Collection to search in (codebase, documentation, diagram)                            |
+| semanticSearch.query         | string  | No       | -       | The search query string                                                               |
+| semanticSearch.filter        | object  | No       | -       | Optional filters for the search                                                       |
+| thought                      | string  | Yes      | -       | The current thinking step content                                                     |
+| nextThoughtNeeded            | boolean | Yes      | -       | Whether another thought step is needed                                                |
+| thoughtNumber                | number  | Yes      | -       | Current thought number in sequence                                                    |
+| totalThoughts                | number  | Yes      | -       | Estimated total thoughts needed (minimum 3)                                           |
+| isRevision                   | boolean | No       | false   | Whether this thought revises previous thinking                                        |
+| revisesThought               | number  | No       | -       | Which thought number is being reconsidered                                            |
+| branchFromThought            | number  | No       | -       | Branching point thought number                                                        |
+| branchId                     | string  | No       | -       | Identifier for the current branch                                                     |
+| needsMoreThoughts            | boolean | No       | false   | If more thoughts are needed beyond initial estimate                                   |
+| readyToIndexTheDocumentation | boolean | Yes      | -       | Whether documentation is ready to be stored in the database                           |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| file | string | The file content being analyzed |
-| contentOfAdditionalFilesToRead | array | Content of additional files that were read |
-| semanticSearchResult | array | Results from semantic search if performed |
-| chapters | array | List of chapter titles in the documentation |
-| thoughtNumber | number | The current thought number |
-| totalThoughts | number | Current estimate of total thoughts needed |
-| nextThoughtNeeded | boolean | Whether another thought step is needed |
-| branches | array | List of branch identifiers |
-| thoughtHistoryLength | number | Total count of thoughts processed |
+| Property                       | Type    | Description                                 |
+| ------------------------------ | ------- | ------------------------------------------- |
+| file                           | string  | The file content being analyzed             |
+| contentOfAdditionalFilesToRead | array   | Content of additional files that were read  |
+| semanticSearchResult           | array   | Results from semantic search if performed   |
+| chapters                       | array   | List of chapter titles in the documentation |
+| thoughtNumber                  | number  | The current thought number                  |
+| totalThoughts                  | number  | Current estimate of total thoughts needed   |
+| nextThoughtNeeded              | boolean | Whether another thought step is needed      |
+| branches                       | array   | List of branch identifiers                  |
+| thoughtHistoryLength           | number  | Total count of thoughts processed           |
 
 ## Database Storage
 
@@ -84,6 +85,7 @@ This enables semantic search and retrieval of documentation based on meaning, no
 ## Example
 
 **Request (Initial Thought)**:
+
 ```json
 {
   "name": "generate_documentation",
@@ -103,6 +105,7 @@ This enables semantic search and retrieval of documentation based on meaning, no
 ```
 
 **Response**:
+
 ```json
 {
   "file": "// Button component code content...",
@@ -118,7 +121,8 @@ This enables semantic search and retrieval of documentation based on meaning, no
 ```
 
 **Final Request (Documentation Ready)**:
-```json
+
+````json
 {
   "name": "generate_documentation",
   "arguments": {
@@ -134,7 +138,7 @@ This enables semantic search and retrieval of documentation based on meaning, no
     "readyToIndexTheDocumentation": true
   }
 }
-```
+````
 
 ## File Input Flexibility
 
@@ -151,6 +155,7 @@ You can provide a path to an existing file:
 ```
 
 The tool will:
+
 1. Check if the path exists
 2. Load the file content automatically
 3. Use that content for documentation analysis
@@ -186,26 +191,26 @@ The documentation tool integrates with the vector database system to store and r
 // When documentation is ready to be indexed
 if (data.readyToIndexTheDocumentation && data.file && data.documentation) {
   // Import required services
-  const { createEmbedding, getEmbeddingDimension } = await import("../services/embeddings.js");
-  const { upsertPoints, createPoint, collectionExists, createCollection } = await import("../services/vectordb.js");
-  
+  const { createEmbedding, getEmbeddingDimension } = await import(
+    "../services/embeddings.js"
+  );
+  const { upsertPoints, createPoint, collectionExists, createCollection } =
+    await import("../services/vectordb.js");
+
   // Get embedding dimension from configuration
   const embeddingDimension = getEmbeddingDimension();
-  
+
   // Ensure collection exists
   if (!(await collectionExists("documentation"))) {
-    const created = await createCollection(
-      "documentation",
-      embeddingDimension
-    );
+    const created = await createCollection("documentation", embeddingDimension);
     if (!created) {
       throw new Error(`Failed to create collection documentation`);
     }
   }
-  
+
   // Generate embedding for the documentation content
   const result = await createEmbedding(data.documentation);
-  
+
   // Create metadata for the document
   const metadata = {
     content: data.documentation,
@@ -214,14 +219,14 @@ if (data.readyToIndexTheDocumentation && data.file && data.documentation) {
     chapters: data.chapters || [],
     createdAt: new Date().toISOString(),
   };
-  
+
   // Create a point for vector database
   const point = createPoint(
     `doc_${Date.now()}_${Math.floor(Math.random() * 1000)}`, // Generate a unique ID
     result.embedding,
-    metadata
+    metadata,
   );
-  
+
   // Add to the documentation collection
   const success = await upsertPoints("documentation", [point]);
 }
@@ -244,7 +249,7 @@ Here's an example that demonstrates using additional file reading and semantic s
       "/path/to/ErrorHandler.js"
     ],
     "needToSearch": true,
-    "seamticSearch": {
+    "semanticSearch": {
       "collection": "documentation",
       "query": "REST API client patterns",
       "filter": {

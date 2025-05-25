@@ -9,6 +9,7 @@ The `index_directory` tool recursively indexes all files in a directory into the
 ## Overview
 
 This tool provides capabilities to:
+
 - Recursively index all files in a directory structure
 - Filter files by extension
 - Control inclusion of hidden files
@@ -19,39 +20,40 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| dirPath | string | Yes | - | Path to the directory to be indexed (absolute or relative to the project root) |
-| recursive | boolean | No | true | Whether to recursively index subdirectories |
-| fileExtensions | string[] | No | - | List of file extensions to include (e.g., [".js", ".ts", ".md"]). If not provided, all files will be indexed. |
-| includeHidden | boolean | No | false | Whether to include hidden files and directories |
-| chunkSize | number | No | 512 | Size of each chunk in characters |
-| chunkOverlap | number | No | 50 | Number of characters to overlap between adjacent chunks |
-| collectionName | string | No | "codebase" | Name of the vector database collection to store embeddings |
+| Name           | Type     | Required | Default    | Description                                                                                                   |
+| -------------- | -------- | -------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| dirPath        | string   | Yes      | -          | Path to the directory to be indexed (absolute or relative to the project root)                                |
+| recursive      | boolean  | No       | true       | Whether to recursively index subdirectories                                                                   |
+| fileExtensions | string[] | No       | -          | List of file extensions to include (e.g., [".js", ".ts", ".md"]). If not provided, all files will be indexed. |
+| includeHidden  | boolean  | No       | false      | Whether to include hidden files and directories                                                               |
+| chunkSize      | number   | No       | 512        | Size of each chunk in characters                                                                              |
+| chunkOverlap   | number   | No       | 50         | Number of characters to overlap between adjacent chunks                                                       |
+| collectionName | string   | No       | "codebase" | Name of the vector database collection to store embeddings                                                    |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| success | boolean | Indicates if the operation was successful |
-| dirPath | string | The absolute path to the indexed directory |
-| recursive | boolean | Whether subdirectories were recursively indexed |
-| processedFiles | number | Number of files processed |
-| totalChunks | number | Total number of chunks created across all files |
-| totalEmbeddingsGenerated | number | Number of embeddings successfully generated |
-| totalErrors | number | Number of errors encountered during processing |
-| fileResults | array | Detailed results for each processed file (limited to 10 files for large directories) |
-| embeddingDimension | number | Dimension of the generated embeddings |
-| filteredExtensions | string[] or "all" | The file extensions that were indexed |
-| collectionName | string | The vector database collection where embeddings were stored |
-| includeHidden | boolean | Whether hidden files were included |
-| message | string | A descriptive message about the operation |
+| Property                 | Type              | Description                                                                          |
+| ------------------------ | ----------------- | ------------------------------------------------------------------------------------ |
+| success                  | boolean           | Indicates if the operation was successful                                            |
+| dirPath                  | string            | The absolute path to the indexed directory                                           |
+| recursive                | boolean           | Whether subdirectories were recursively indexed                                      |
+| processedFiles           | number            | Number of files processed                                                            |
+| totalChunks              | number            | Total number of chunks created across all files                                      |
+| totalEmbeddingsGenerated | number            | Number of embeddings successfully generated                                          |
+| totalErrors              | number            | Number of errors encountered during processing                                       |
+| fileResults              | array             | Detailed results for each processed file (limited to 10 files for large directories) |
+| embeddingDimension       | number            | Dimension of the generated embeddings                                                |
+| filteredExtensions       | string[] or "all" | The file extensions that were indexed                                                |
+| collectionName           | string            | The vector database collection where embeddings were stored                          |
+| includeHidden            | boolean           | Whether hidden files were included                                                   |
+| message                  | string            | A descriptive message about the operation                                            |
 
 ## Example Usage
 
 **Request**:
+
 ```json
 {
   "name": "index_directory",
@@ -68,6 +70,7 @@ The tool returns an object with the following properties:
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -101,16 +104,19 @@ The tool returns an object with the following properties:
 The tool implements a comprehensive file processing workflow:
 
 1. **Directory Traversal**:
+
    - Recursively walks the directory structure (if specified)
    - Filters files based on extensions if provided
    - Respects the hidden file inclusion setting
 
 2. **File Processing**:
+
    - Reads each file's content and metadata
    - Applies the chunking strategy with configurable size and overlap
    - Handles empty files or whitespace-only content
 
 3. **Embedding Generation**:
+
    - Generates embeddings for each chunk using the configured provider
    - Tracks successful embedding generation and handles errors
    - Creates rich metadata for each embedding point
@@ -158,17 +164,17 @@ async indexDirectory(
     includeHidden,
     extensions: fileExtensions || [],
   });
-  
+
   // Filter to only include files (not directories)
   const files = readResult.data!.entries
     .filter((entry) => entry.type === "file")
     .map((entry) => path.join(absolutePath, entry.path));
-    
+
   // Ensure collection exists
   if (!(await collectionExists(collectionName))) {
     await createCollection(collectionName, embeddingDimension);
   }
-  
+
   // Process each file
   for (const filePath of files) {
     const result = await this.processFile(
@@ -177,14 +183,14 @@ async indexDirectory(
       chunkSize,
       chunkOverlap
     );
-    
+
     // Track statistics
     fileResults.push(result);
     if (result.totalChunks) totalChunks += result.totalChunks;
     if (result.embeddingsGenerated) totalEmbeddingsGenerated += result.embeddingsGenerated;
     if (result.embeddingErrors) totalErrors += result.embeddingErrors;
   }
-  
+
   // Return comprehensive result
   return {
     success: true,

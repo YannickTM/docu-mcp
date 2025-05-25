@@ -7,7 +7,8 @@
     "stop": "docker-compose -f docker-compose.yml stop",
     "start": "docker-compose -f docker-compose.yml up -d",
     "clean": "docker-compose -f docker-compose.yml down && rm -rf data",
-    "build": ""
+    "build": "",
+    "format": ""
   },
   "author": "",
   "license": "ISC",

@@ -9,6 +9,7 @@ The `index_file` tool indexes a file's content into the vector database to enabl
 ## Overview
 
 This tool provides capabilities to:
+
 - Index file contents for semantic search and RAG operations
 - Chunk content with customizable size and overlap
 - Automatically generate embeddings using the configured provider
@@ -17,35 +18,36 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| filePath | string | Yes | - | Path to the file to be indexed (absolute or relative to the project root) |
-| chunkSize | number | No | 512 | Size of each chunk in characters |
-| chunkOverlap | number | No | 50 | Number of characters to overlap between adjacent chunks |
-| collectionName | string | No | "codebase" | Name of the vector database collection to store embeddings |
+| Name           | Type   | Required | Default    | Description                                                               |
+| -------------- | ------ | -------- | ---------- | ------------------------------------------------------------------------- |
+| filePath       | string | Yes      | -          | Path to the file to be indexed (absolute or relative to the project root) |
+| chunkSize      | number | No       | 512        | Size of each chunk in characters                                          |
+| chunkOverlap   | number | No       | 50         | Number of characters to overlap between adjacent chunks                   |
+| collectionName | string | No       | "codebase" | Name of the vector database collection to store embeddings                |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| success | boolean | Indicates if the operation was successful |
-| filePath | string | The absolute path to the indexed file |
-| fileType | string | The file extension/type |
-| totalChunks | number | Number of chunks the file was split into |
-| embeddingsGenerated | number | Number of embeddings successfully generated |
-| embeddingErrors | number | Number of errors during embedding generation |
-| embeddingDimension | number | Dimension of the generated embeddings |
-| storedInDatabase | boolean | Whether embeddings were successfully stored in the vector database |
-| collectionName | string | Vector database collection name where embeddings were stored |
-| metadata | object | File metadata including size, creation date, etc. |
-| sizeInBytes | number | Size of the file in bytes |
-| message | string | A descriptive message about the operation |
+| Property            | Type    | Description                                                        |
+| ------------------- | ------- | ------------------------------------------------------------------ |
+| success             | boolean | Indicates if the operation was successful                          |
+| filePath            | string  | The absolute path to the indexed file                              |
+| fileType            | string  | The file extension/type                                            |
+| totalChunks         | number  | Number of chunks the file was split into                           |
+| embeddingsGenerated | number  | Number of embeddings successfully generated                        |
+| embeddingErrors     | number  | Number of errors during embedding generation                       |
+| embeddingDimension  | number  | Dimension of the generated embeddings                              |
+| storedInDatabase    | boolean | Whether embeddings were successfully stored in the vector database |
+| collectionName      | string  | Vector database collection name where embeddings were stored       |
+| metadata            | object  | File metadata including size, creation date, etc.                  |
+| sizeInBytes         | number  | Size of the file in bytes                                          |
+| message             | string  | A descriptive message about the operation                          |
 
 ## Example Usage
 
 **Request**:
+
 ```json
 {
   "name": "index_file",
@@ -59,6 +61,7 @@ The tool returns an object with the following properties:
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,

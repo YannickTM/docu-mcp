@@ -1,0 +1,8 @@
+# Ignore artifacts:
+build
+dist
+node_modules
+coverage
+chromadb_data
+lancedb_data
+qdrant_data

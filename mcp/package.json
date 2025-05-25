@@ -1,6 +1,6 @@
 {
   "name": "@myjungle/docu-mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "docu-mcp-server MCP server",
   "type": "module",
   "bin": {
@@ -16,22 +16,32 @@
     "start": "node dist/index.js",
     "client": "node dist/client-example.js",
     "clean": "rm -rf dist && rm -rf node_modules",
-    "pip:chroma": "chroma run --path ./chromadb_data"
+    "pip:chroma": "chroma run --path ./chromadb_data",
+    "format": "prettier --write '**/*.{js,ts,json,md}'",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.5.1",
-    "@lancedb/lancedb": "^0.19.0",
-    "@modelcontextprotocol/sdk": "^1.11.1",
-    "@qdrant/js-client-rest": "^1.14.0",
-    "@qdrant/qdrant-js": "^1.14.0",
+    "@lancedb/lancedb": "^0.19.1",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@qdrant/js-client-rest": "^1.14.1",
+    "@qdrant/qdrant-js": "^1.14.1",
     "axios": "^1.9.0",
     "chalk": "^5.4.1",
-    "chromadb": "^2.4.3",
+    "chromadb": "^2.4.6",
     "dotenv": "^16.5.0"
   },
   "devDependencies": {
-    "@types/node": "^22.15.17",
-    "typescript": "^5.8.3"
+    "@types/node": "^22.15.21",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1"
   },
   "engines": {
     "node": ">=20.11.24"

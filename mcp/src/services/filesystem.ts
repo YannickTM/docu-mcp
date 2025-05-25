@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import chalk from "chalk";
-
+import { logger } from "./logger.js";
 /**
  * Response interface for filesystem operations
  */
@@ -51,7 +51,7 @@ export function resolvePath(filePath: string): string {
  * Check if path exists and return its type
  */
 export async function getPathType(
-  entityPath: string
+  entityPath: string,
 ): Promise<"file" | "directory" | null> {
   try {
     const stats = await fs.stat(entityPath);
@@ -67,7 +67,7 @@ export async function getPathType(
 export async function getMetadata(filePath: string): Promise<FileMetadata> {
   const absolutePath = resolvePath(filePath);
   const stats = await fs.stat(absolutePath);
-  
+
   return {
     size: stats.size,
     created: stats.birthtime,
@@ -75,7 +75,7 @@ export async function getMetadata(filePath: string): Promise<FileMetadata> {
     accessed: stats.atime,
     extension: path.extname(absolutePath),
     filename: path.basename(absolutePath),
-    directory: path.dirname(absolutePath)
+    directory: path.dirname(absolutePath),
   };
 }
 
@@ -84,8 +84,8 @@ export async function getMetadata(filePath: string): Promise<FileMetadata> {
  */
 export async function readFile(
   filePath: string,
-  encoding: BufferEncoding = "utf-8"
-): Promise<FileSystemResponse<{content: string; metadata?: FileMetadata}>> {
+  encoding: BufferEncoding = "utf-8",
+): Promise<FileSystemResponse<{ content: string; metadata?: FileMetadata }>> {
   const absolutePath = resolvePath(filePath);
 
   try {
@@ -93,10 +93,11 @@ export async function readFile(
     if (pathType !== "file") {
       return {
         success: false,
-        message: pathType === null
-          ? `File not found: ${absolutePath}`
-          : `Path is not a file: ${absolutePath}`,
-        error: "FILE_NOT_FOUND"
+        message:
+          pathType === null
+            ? `File not found: ${absolutePath}`
+            : `Path is not a file: ${absolutePath}`,
+        error: "FILE_NOT_FOUND",
       };
     }
 
@@ -108,17 +109,20 @@ export async function readFile(
       message: `File read successfully`,
       data: {
         content,
-        metadata
-      }
+        metadata,
+      },
     };
   } catch (error) {
-    console.error(chalk.red(`Failed to read file: ${absolutePath}`), error);
+    logger.error(
+      chalk.red(`Failed to read file: ${absolutePath}`),
+      error as Error,
+    );
     return {
       success: false,
       message: `Failed to read file: ${
         error instanceof Error ? error.message : String(error)
       }`,
-      error: "READ_ERROR"
+      error: "READ_ERROR",
     };
   }
 }
@@ -129,8 +133,8 @@ export async function readFile(
 export async function writeFile(
   filePath: string,
   content: string,
-  options: { createDir?: boolean; overwrite?: boolean } = {}
-): Promise<FileSystemResponse<{path: string; created: boolean}>> {
+  options: { createDir?: boolean; overwrite?: boolean } = {},
+): Promise<FileSystemResponse<{ path: string; created: boolean }>> {
   const { createDir = true, overwrite = true } = options;
   const absolutePath = resolvePath(filePath);
 
@@ -142,7 +146,7 @@ export async function writeFile(
       return {
         success: false,
         message: `File already exists and overwrite is disabled`,
-        error: "FILE_EXISTS"
+        error: "FILE_EXISTS",
       };
     }
 
@@ -154,20 +158,25 @@ export async function writeFile(
 
     return {
       success: true,
-      message: fileExists ? `File updated successfully` : `File created successfully`,
+      message: fileExists
+        ? `File updated successfully`
+        : `File created successfully`,
       data: {
         path: absolutePath,
-        created: !fileExists
-      }
+        created: !fileExists,
+      },
     };
   } catch (error) {
-    console.error(chalk.red(`Failed to write file: ${absolutePath}`), error);
+    logger.error(
+      chalk.red(`Failed to write file: ${absolutePath}`),
+      error as Error,
+    );
     return {
       success: false,
       message: `Failed to write file: ${
         error instanceof Error ? error.message : String(error)
       }`,
-      error: "WRITE_ERROR"
+      error: "WRITE_ERROR",
     };
   }
 }
@@ -177,8 +186,8 @@ export async function writeFile(
  */
 export async function createDirectory(
   dirPath: string,
-  recursive: boolean = true
-): Promise<FileSystemResponse<{path: string; created: boolean}>> {
+  recursive: boolean = true,
+): Promise<FileSystemResponse<{ path: string; created: boolean }>> {
   const absolutePath = resolvePath(dirPath);
 
   try {
@@ -190,8 +199,8 @@ export async function createDirectory(
         message: `Directory already exists`,
         data: {
           path: absolutePath,
-          created: false
-        }
+          created: false,
+        },
       };
     }
 
@@ -202,17 +211,20 @@ export async function createDirectory(
       message: `Directory created successfully`,
       data: {
         path: absolutePath,
-        created: true
-      }
+        created: true,
+      },
     };
   } catch (error) {
-    console.error(chalk.red(`Failed to create directory: ${absolutePath}`), error);
+    logger.error(
+      chalk.red(`Failed to create directory: ${absolutePath}`),
+      error as Error,
+    );
     return {
       success: false,
       message: `Failed to create directory: ${
         error instanceof Error ? error.message : String(error)
       }`,
-      error: "DIRECTORY_ERROR"
+      error: "DIRECTORY_ERROR",
     };
   }
 }
@@ -224,7 +236,7 @@ async function* walkDirectory(
   dirPath: string,
   basePath: string,
   includeHidden: boolean,
-  extensions: string[]
+  extensions: string[],
 ): AsyncGenerator<DirectoryEntry> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
@@ -245,12 +257,7 @@ async function* walkDirectory(
       };
 
       // Recursively yield subdirectory contents
-      yield* walkDirectory(
-        fullPath,
-        basePath,
-        includeHidden,
-        extensions
-      );
+      yield* walkDirectory(fullPath, basePath, includeHidden, extensions);
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name);
       if (
@@ -268,7 +275,7 @@ async function* walkDirectory(
         isHidden: entry.name.startsWith("."),
         size: stats.size,
         modified: stats.mtime.toISOString(),
-        extension: ext
+        extension: ext,
       };
     }
   }
@@ -282,7 +289,7 @@ async function collectDirectoryEntries(
   basePath: string,
   recursive: boolean,
   includeHidden: boolean,
-  extensions: string[]
+  extensions: string[],
 ): Promise<DirectoryEntry[]> {
   const entries: DirectoryEntry[] = [];
 
@@ -291,7 +298,7 @@ async function collectDirectoryEntries(
       dirPath,
       basePath,
       includeHidden,
-      extensions
+      extensions,
     )) {
       entries.push(entry);
     }
@@ -321,7 +328,7 @@ async function collectDirectoryEntries(
           isHidden: file.name.startsWith("."),
           size: stats.size,
           modified: stats.mtime.toISOString(),
-          extension: ext
+          extension: ext,
         });
       } else if (file.isDirectory()) {
         entries.push({
@@ -347,13 +354,9 @@ export async function readDirectory(
     recursive?: boolean;
     includeHidden?: boolean;
     extensions?: string[];
-  } = {}
-): Promise<FileSystemResponse<{path: string; entries: DirectoryEntry[]}>> {
-  const {
-    recursive = false,
-    includeHidden = false,
-    extensions = [],
-  } = options;
+  } = {},
+): Promise<FileSystemResponse<{ path: string; entries: DirectoryEntry[] }>> {
+  const { recursive = false, includeHidden = false, extensions = [] } = options;
   const absolutePath = resolvePath(dirPath);
 
   try {
@@ -361,10 +364,11 @@ export async function readDirectory(
     if (pathType !== "directory") {
       return {
         success: false,
-        message: pathType === null
-          ? `Directory not found: ${absolutePath}`
-          : `Path is not a directory: ${absolutePath}`,
-        error: "DIRECTORY_NOT_FOUND"
+        message:
+          pathType === null
+            ? `Directory not found: ${absolutePath}`
+            : `Path is not a directory: ${absolutePath}`,
+        error: "DIRECTORY_NOT_FOUND",
       };
     }
 
@@ -373,7 +377,7 @@ export async function readDirectory(
       absolutePath,
       recursive,
       includeHidden,
-      extensions
+      extensions,
     );
 
     return {
@@ -381,17 +385,20 @@ export async function readDirectory(
       message: `Directory read successfully`,
       data: {
         path: absolutePath,
-        entries
-      }
+        entries,
+      },
     };
   } catch (error) {
-    console.error(chalk.red(`Failed to read directory: ${absolutePath}`), error);
+    logger.error(
+      chalk.red(`Failed to read directory: ${absolutePath}`),
+      error as Error,
+    );
     return {
       success: false,
       message: `Failed to read directory: ${
         error instanceof Error ? error.message : String(error)
       }`,
-      error: "READ_DIRECTORY_ERROR"
+      error: "READ_DIRECTORY_ERROR",
     };
   }
 }

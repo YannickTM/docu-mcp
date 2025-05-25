@@ -1,11 +1,10 @@
 // Fixed chalk import for ESM
 import chalk from "chalk";
-import path from "path";
-import * as filesystem from "../services/filesystem.js";
 import {
   createEmbedding,
   getEmbeddingDimension,
 } from "../services/embeddings.js";
+import { logger } from "../services/logger.js";
 import {
   collectionExists,
   search,
@@ -55,7 +54,7 @@ class UserGuideGenerator {
     }
     if (data.readyToIndexTheUserGuide && !data.userGuide) {
       throw new Error(
-        "readyToIndexTheUserGuide is true but userGuide is missing"
+        "readyToIndexTheUserGuide is true but userGuide is missing",
       );
     }
 
@@ -73,24 +72,24 @@ class UserGuideGenerator {
           const { collection, query, filter } = searchQuery;
 
           if (!collection || !query) {
-            console.error(
-              chalk.red("Invalid semanticSearch: missing collection or query")
+            logger.error(
+              chalk.red("Invalid semanticSearch: missing collection or query"),
             );
             continue;
           }
 
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.error(chalk.red(`Collection ${collection} does not exist`));
             continue;
           }
 
-          console.warn(
-            chalk.blue(`Searching ${collection} collection for: "${query}"`)
+          logger.warn(
+            chalk.blue(`Searching ${collection} collection for: "${query}"`),
           );
 
           // Build filter if provided
-          let filterQuery = undefined;
+          let filterQuery = {};
           if (filter) {
             const conditions = [];
 
@@ -145,9 +144,9 @@ class UserGuideGenerator {
 
             if (conditions.length > 0) {
               filterQuery = { must: conditions };
-              console.warn(
+              logger.warn(
                 `With filters:`,
-                JSON.stringify(filterQuery, null, 2)
+                JSON.stringify(filterQuery, null, 2),
               );
             }
           }
@@ -155,8 +154,8 @@ class UserGuideGenerator {
           // Generate embedding for the query
           const embeddingResult = await createEmbedding(query);
           if (embeddingResult.error) {
-            console.error(
-              chalk.red(`Error generating embedding: ${embeddingResult.error}`)
+            logger.error(
+              chalk.red(`Error generating embedding: ${embeddingResult.error}`),
             );
             continue;
           }
@@ -167,7 +166,7 @@ class UserGuideGenerator {
             collection,
             embeddingResult.embedding,
             limit,
-            filterQuery
+            filterQuery,
           );
 
           // Process the results based on the collection type
@@ -207,26 +206,43 @@ class UserGuideGenerator {
             }),
           }));
 
-          searchResults.push(...processedResults);
-          console.warn(
+          // Create a search results object for this specific collection
+          const collectionSearchResult = {
+            collection: collection,
+            query: query,
+            filter: filterQuery,
+            results: processedResults,
+          };
+
+          searchResults.push(collectionSearchResult);
+
+          logger.warn(
             chalk.green(
-              `Found ${processedResults.length} results in ${collection} collection`
-            )
+              `Found ${processedResults.length} results in ${collection} collection`,
+            ),
           );
         }
 
-        // Sort all results by similarity
-        searchResults.sort((a: any, b: any) => b.similarity - a.similarity);
-        console.warn(
-          chalk.green(`Total search results: ${searchResults.length}`)
+        // After all collections are processed, you might want to merge or sort across all
+        // Sort results within each collection
+        searchResults.forEach((searchResult: any) => {
+          searchResult.results.sort(
+            (a: any, b: any) => b.similarity - a.similarity,
+          );
+        });
+
+        const totalResults = searchResults.reduce(
+          (sum: any, sr: any) => sum + sr.results.length,
+          0,
         );
+        logger.warn(chalk.green(`Total search results: ${totalResults}`));
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -241,20 +257,20 @@ class UserGuideGenerator {
         if (!(await collectionExists("user_guides"))) {
           const created = await createCollection(
             "user_guides",
-            embeddingDimension
+            embeddingDimension,
           );
           if (!created) {
             throw new Error(`Failed to create collection user_guides`);
           }
-          console.error(chalk.green(`Created user_guides collection`));
+          logger.info(chalk.green(`Created user_guides collection`));
         }
 
         // Generate embedding for the user guide content
         const result = await createEmbedding(data.userGuide);
 
         if (result.error) {
-          console.error(
-            chalk.red(`Error generating embedding: ${result.error}`)
+          logger.error(
+            chalk.red(`Error generating embedding: ${result.error}`),
           );
           throw new Error(`Failed to generate embedding: ${result.error}`);
         }
@@ -285,23 +301,23 @@ class UserGuideGenerator {
         const success = await upsertPoints("user_guides", [point]);
 
         if (success) {
-          console.error(
+          logger.info(
             chalk.green(
-              `User guide indexed successfully for topic: ${data.topic}`
-            )
+              `User guide indexed successfully for topic: ${data.topic}`,
+            ),
           );
         } else {
-          console.error(
-            chalk.red(`Failed to index user guide for topic: ${data.topic}`)
+          logger.error(
+            chalk.red(`Failed to index user guide for topic: ${data.topic}`),
           );
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error indexing user guide: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -366,8 +382,8 @@ class UserGuideGenerator {
         thought.length,
         topic.length,
         targetAudience.length,
-        (userGuide ?? "").length
-      ) + 4
+        (userGuide ?? "").length,
+      ) + 4,
     );
 
     // Ensure displays aren't too long
@@ -424,7 +440,7 @@ class UserGuideGenerator {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -450,7 +466,7 @@ class UserGuideGenerator {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -466,7 +482,7 @@ class UserGuideGenerator {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

@@ -2,6 +2,7 @@
 import chalk from "chalk";
 import path from "path";
 import * as filesystem from "../services/filesystem.js";
+import { logger } from "../services/logger.js";
 
 class CodeExplainer {
   thoughtHistory: any[] = [];
@@ -44,30 +45,48 @@ class CodeExplainer {
           throw new Error(readResult.message);
         }
 
-        fileContent = readResult.data!.content;
-        console.error(chalk.green(`Loaded file content from: ${filePath}`));
+        if (!readResult.data || !readResult.data.content) {
+          logger.warn(
+            chalk.yellow(`File content is empty or not found at: ${filePath}`),
+          );
+          readResult.data = {
+            content: "File content is empty or not found",
+            metadata: {
+              size: 0,
+              created: new Date(),
+              modified: new Date(),
+              accessed: new Date(),
+              extension: path.extname(filePath),
+              filename: path.basename(filePath),
+              directory: path.dirname(filePath),
+            },
+          };
+        }
+
+        fileContent = readResult.data.content;
+        logger.info(chalk.green(`Loaded file content from: ${filePath}`));
       } else {
         // If it doesn't exist, assume it's already code content
-        console.error(
+        logger.warn(
           chalk.yellow(
             `Assuming input is code content and not a file path: ${data.file.substring(
               0,
-              50
-            )}...`
-          )
+              50,
+            )}...`,
+          ),
         );
       }
     } catch (error) {
       // If there's an error, assume it's already code content
-      console.error(
+      logger.warn(
         chalk.yellow(
           `Error checking file path, assuming it's code: ${
             error instanceof Error ? error.message : String(error)
-          }`
-        )
+          }`,
+        ),
       );
     }
-    
+
     // Handle additional files to read
     let additionalFileContent = undefined;
     if (
@@ -87,14 +106,34 @@ class CodeExplainer {
               if (fileExists) {
                 const readResult = await filesystem.readFile(
                   resolvedPath,
-                  "utf-8"
+                  "utf-8",
                 );
                 if (!readResult.success) {
                   return `Failed to read ${filePath}: ${readResult.message}`;
                 }
+
+                if (!readResult.data || !readResult.data.content) {
+                  logger.warn(
+                    chalk.yellow(
+                      `File content is empty or not found at: ${filePath}`,
+                    ),
+                  );
+                  readResult.data = {
+                    content: "File content is empty or not found",
+                    metadata: {
+                      size: 0,
+                      created: new Date(),
+                      modified: new Date(),
+                      accessed: new Date(),
+                      extension: path.extname(filePath),
+                      filename: path.basename(filePath),
+                      directory: path.dirname(filePath),
+                    },
+                  };
+                }
                 return {
                   path: filePath,
-                  content: readResult.data!.content,
+                  content: readResult.data.content,
                 };
               } else {
                 return {
@@ -110,25 +149,25 @@ class CodeExplainer {
                 }`,
               };
             }
-          })
+          }),
         );
         additionalFileContent = additionalContents;
-        console.warn(
-          chalk.green(`Loaded ${additionalContents.length} additional files`)
+        logger.warn(
+          chalk.green(`Loaded ${additionalContents.length} additional files`),
         );
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error processing additional files: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
-    
+
     // Handle semantic search
-    let searchResults = data.seamticSearch || undefined;
+    let searchResults = data.semanticSearch || undefined;
     if (data.semanticSearch) {
       try {
         // Import required search services
@@ -139,23 +178,23 @@ class CodeExplainer {
 
         const { collection, query, filter } = data.semanticSearch;
         if (!collection || !query) {
-          console.error(
-            chalk.red("Invalid semanticSearch: missing collection or query")
+          logger.error(
+            chalk.red("Invalid semanticSearch: missing collection or query"),
           );
         } else {
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.warn(chalk.red(`Collection ${collection} does not exist`));
           } else {
-            console.warn(
-              chalk.blue(`Searching ${collection} collection for: "${query}"`)
+            logger.warn(
+              chalk.blue(`Searching ${collection} collection for: "${query}"`),
             );
-            
+
             // Build filter if provided
-            let filterQuery = undefined;
+            let filterQuery = {};
             if (filter) {
               const conditions = [];
-              
+
               // Add filter conditions based on the provided filters
               if (filter.filename) {
                 conditions.push({
@@ -163,34 +202,39 @@ class CodeExplainer {
                   match: { text: filter.filename },
                 });
               }
-              
+
               if (filter.directory) {
                 conditions.push({
                   key: "directory",
                   match: { text: filter.directory },
                 });
               }
-              
-              if (filter.diagramType && collection === "diagrams") {
+
+              if (filter.diagramType && collection === "diagram") {
                 conditions.push({
                   key: "diagramType",
                   match: { text: filter.diagramType },
                 });
               }
-              
-              if (conditions.length > 0) {
-                filterQuery = { must: conditions };
-                console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+
+              // Only log if we have actual filters
+              if (Object.keys(filterQuery).length > 0) {
+                logger.warn(
+                  `With filters:`,
+                  JSON.stringify(filterQuery, null, 2),
+                );
+              } else {
+                filterQuery = {};
               }
             }
 
             // Generate embedding for the query
             const embeddingResult = await createEmbedding(query);
             if (embeddingResult.error) {
-              console.error(
+              logger.error(
                 chalk.red(
-                  `Error generating embedding: ${embeddingResult.error}`
-                )
+                  `Error generating embedding: ${embeddingResult.error}`,
+                ),
               );
             } else {
               // Perform the search
@@ -199,47 +243,56 @@ class CodeExplainer {
                 collection,
                 embeddingResult.embedding,
                 limit,
-                filterQuery
+                filterQuery,
               );
 
-              // Process the results based on the collection type
-              searchResults = searchResult.map(({ score, payload }) => ({
-                content: payload.content || "",
-                similarity: parseFloat(score.toFixed(4)),
-                filePath: payload.filePath || "",
-                filename: payload.filename || "",
-                location: `${payload.filePath}${
-                  payload.startPosition ? `:${payload.startPosition}` : ""
-                }`,
-                // Include collection-specific metadata
-                ...(collection === "documentation" && {
-                  title: payload.title,
-                  docType: payload.docType,
-                  section: payload.section,
-                  tags: payload.tags,
+              // Process the results and create the expected structure
+              const processedResults = searchResult.map(
+                ({ score, payload }) => ({
+                  content: payload.content || "",
+                  similarity: parseFloat(score.toFixed(4)),
+                  filePath: payload.filePath || "",
+                  filename: payload.filename || "",
+                  location: `${payload.filePath}${
+                    payload.startPosition ? `:${payload.startPosition}` : ""
+                  }`,
+                  // Include collection-specific metadata
+                  ...(collection === "documentation" && {
+                    title: payload.title,
+                    docType: payload.docType,
+                    section: payload.section,
+                    tags: payload.tags,
+                  }),
+                  ...(collection === "diagram" && {
+                    title: payload.title,
+                    diagramType: payload.diagramType,
+                    description: payload.description,
+                  }),
                 }),
-                ...(collection === "diagrams" && {
-                  title: payload.title,
-                  diagramType: payload.diagramType,
-                  description: payload.description,
-                }),
-              }));
+              );
 
-              console.warn(
+              searchResults = {
+                collection: collection, // assuming 'collection' variable exists
+                query: query,
+                filter: filterQuery,
+                results: processedResults, // add the actual results
+              };
+
+              logger.info(
                 chalk.green(
-                  `Found ${searchResults.length} results in ${collection} collection`
-                )
+                  `Found ${searchResult.length} results in ${collection} collection`,
+                ),
               );
             }
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -297,8 +350,8 @@ class CodeExplainer {
         header.length,
         thought.length,
         file.length,
-        (explanation || "").length
-      ) + 4
+        (explanation || "").length,
+      ) + 4,
     );
 
     // Ensure file and explanation aren't too long for display by truncating them
@@ -347,7 +400,7 @@ class CodeExplainer {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -355,7 +408,8 @@ class CodeExplainer {
             text: JSON.stringify(
               {
                 file: validatedInput.file,
-                contentOfAdditionalFilesToRead: validatedInput.contentOfAdditionalFilesToRead,
+                contentOfAdditionalFilesToRead:
+                  validatedInput.contentOfAdditionalFilesToRead,
                 semanticSearchResult: validatedInput.semanticSearchResult,
                 explanation: validatedInput.explanation,
                 thoughtNumber: validatedInput.thoughtNumber,
@@ -365,7 +419,7 @@ class CodeExplainer {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -381,7 +435,7 @@ class CodeExplainer {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -477,7 +531,7 @@ You should:
         type: "boolean",
         description: "If semantic search is needed",
       },
-      seamticSearch: {
+      semanticSearch: {
         type: "object",
         properties: {
           collection: {

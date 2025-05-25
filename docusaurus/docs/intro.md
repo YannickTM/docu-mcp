@@ -22,7 +22,7 @@ DocuMCP follows a modular architecture:
 
 ```
 documcp/
-├── mcp/                # TypeScript MCP server implementation  
+├── mcp/                # TypeScript MCP server implementation
 │   ├── src/            # Source code
 │   │   ├── rag/        # RAG implementation
 │   │   ├── server/     # Server configuration

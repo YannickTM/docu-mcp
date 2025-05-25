@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Tool for creating new directories in the filesystem
  * Supports both absolute and relative paths with recursive creation
@@ -12,7 +12,7 @@ class CreateDirTool {
    */
   private async createDirectoryInternal(
     dirPath: string,
-    recursive: boolean = true
+    recursive: boolean = true,
   ) {
     // Use simplified filesystem functions to create the directory
     const result = await filesystem.createDirectory(dirPath, recursive);
@@ -21,12 +21,16 @@ class CreateDirTool {
       throw new Error(result.message);
     }
 
+    if (!result.data || !result.data.path) {
+      throw new Error("Directory creation result is invalid");
+    }
+
     return {
       success: true,
-      path: result.data!.path,
+      path: result.data.path,
       created: new Date().toISOString(),
-      isNewDirectory: result.data!.created,
-      message: result.data!.created
+      isNewDirectory: result.data.created,
+      message: result.data.created
         ? `Directory created successfully`
         : `Directory already exists`,
     };
@@ -50,10 +54,10 @@ class CreateDirTool {
       ];
 
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -84,7 +88,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                     status: "failed",
                   },
                   null,
-                  2
+                  2,
                 ),
               },
             ],
@@ -102,7 +106,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -111,7 +115,6 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
     }
   }
 }
-
 const CREATE_DIR_TOOL = {
   name: "create_directory",
   description: `A tool for creating new directories in the filesystem.

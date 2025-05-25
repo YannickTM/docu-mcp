@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
 import { collectionExists, search } from "../services/vectordb.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Interface for user guide search result
  */
@@ -40,7 +40,7 @@ class SearchUserGuideTool {
    * Builds a filter from search filters
    */
   private buildFilter(
-    filter?: UserGuideSearchFilter
+    filter?: UserGuideSearchFilter,
   ): Record<string, any> | undefined {
     if (!filter) return undefined;
 
@@ -70,7 +70,6 @@ class SearchUserGuideTool {
       });
     }
 
-
     return conditions.length > 0 ? { must: conditions } : undefined;
   }
 
@@ -80,15 +79,15 @@ class SearchUserGuideTool {
   async searchUserGuides(
     query: string,
     limit: number = 10,
-    filter?: UserGuideSearchFilter
+    filter?: UserGuideSearchFilter,
   ): Promise<UserGuideSearchResult[]> {
     try {
       const collectionName = "user_guides";
-      
+
       // Check if collection exists
       if (!(await collectionExists(collectionName))) {
         throw new Error(
-          `User guides collection does not exist. Please generate some user guides first.`
+          `User guides collection does not exist. Please generate some user guides first.`,
         );
       }
 
@@ -96,7 +95,7 @@ class SearchUserGuideTool {
       const embeddingResult = await createEmbedding(query);
       if (embeddingResult.error) {
         throw new Error(
-          `Failed to generate embedding for query: ${embeddingResult.error}`
+          `Failed to generate embedding for query: ${embeddingResult.error}`,
         );
       }
 
@@ -104,13 +103,11 @@ class SearchUserGuideTool {
       const filterQuery = this.buildFilter(filter);
 
       // Log search info
-      console.warn(
-        chalk.blue(
-          `Searching user guides collection for: "${query}"`
-        )
+      logger.warn(
+        chalk.blue(`Searching user guides collection for: "${query}"`),
       );
       if (filterQuery) {
-        console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+        logger.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
       }
 
       // Search in VectorDB
@@ -118,7 +115,7 @@ class SearchUserGuideTool {
         collectionName,
         embeddingResult.embedding,
         limit,
-        filterQuery
+        filterQuery,
       );
 
       // Map results to UserGuideSearchResult interface
@@ -140,9 +137,9 @@ class SearchUserGuideTool {
         createdAt: payload.createdAt || "",
       }));
     } catch (error) {
-      console.error(chalk.red(`Error searching user guides:`), error);
+      logger.error(chalk.red(`Error searching user guides:`), error as Error);
       throw new Error(
-        `Failed to search user guides: ${(error as Error).message}`
+        `Failed to search user guides: ${(error as Error).message}`,
       );
     }
   }
@@ -152,13 +149,7 @@ class SearchUserGuideTool {
    */
   processSearchUserGuides(input: any) {
     try {
-      const {
-        query,
-        limit = 10,
-        targetAudience,
-        topic,
-        relatedFile,
-      } = input;
+      const { query, limit = 10, targetAudience, topic, relatedFile } = input;
 
       if (!query || typeof query !== "string") {
         throw new Error("Invalid query: must be a non-empty string");
@@ -188,10 +179,10 @@ class SearchUserGuideTool {
 
       const header = chalk.blue(`🔍 Searching User Guides`);
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -202,7 +193,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
       return this.searchUserGuides(
         query,
         limit,
-        Object.keys(filter).length > 0 ? filter : undefined
+        Object.keys(filter).length > 0 ? filter : undefined,
       )
         .then((results) => ({
           content: [
@@ -225,7 +216,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   })),
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -240,7 +231,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -257,7 +248,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -304,7 +295,8 @@ Parameters explained:
       },
       targetAudience: {
         type: "string",
-        description: "Filter by target audience (e.g., 'developers', 'end-users')",
+        description:
+          "Filter by target audience (e.g., 'developers', 'end-users')",
       },
       topic: {
         type: "string",

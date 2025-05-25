@@ -1,8 +1,6 @@
 import chalk from "chalk";
-import {
-  collectionExists,
-  deleteCollection,
-} from "../services/vectordb.js";
+import { logger } from "../services/logger.js";
+import { collectionExists, deleteCollection } from "../services/vectordb.js";
 
 /**
  * Result interface for removing index collection
@@ -22,12 +20,12 @@ class RemoveIndexCollectionTool {
    * Removes an index collection from the vector database
    */
   async removeCollection(
-    collectionName: string
+    collectionName: string,
   ): Promise<RemoveIndexCollectionResult> {
     try {
       // Check if collection exists
       const exists = await collectionExists(collectionName);
-      
+
       if (!exists) {
         return {
           success: false,
@@ -39,12 +37,14 @@ class RemoveIndexCollectionTool {
 
       // Delete the collection
       const deleted = await deleteCollection(collectionName);
-      
+
       if (deleted) {
-        console.warn(
-          chalk.green(`Successfully removed collection '${collectionName}' from vector database`)
+        logger.warn(
+          chalk.green(
+            `Successfully removed collection '${collectionName}' from vector database`,
+          ),
         );
-        
+
         return {
           success: true,
           collectionName,
@@ -55,8 +55,12 @@ class RemoveIndexCollectionTool {
         throw new Error(`Failed to delete collection '${collectionName}'`);
       }
     } catch (error) {
-      console.error(chalk.red(`Error removing collection ${collectionName}:`, error));
-      throw new Error(`Failed to remove collection: ${(error as Error).message}`);
+      logger.error(
+        chalk.red(`Error removing collection ${collectionName}:`, error),
+      );
+      throw new Error(
+        `Failed to remove collection: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -72,7 +76,7 @@ class RemoveIndexCollectionTool {
       }
 
       // Log formatted information
-      console.error(`
+      logger.info(`
 ${chalk.red("🗑️  Removing Collection:")} ${collectionName}
       `);
 
@@ -96,7 +100,7 @@ ${chalk.red("🗑️  Removing Collection:")} ${collectionName}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -113,7 +117,7 @@ ${chalk.red("🗑️  Removing Collection:")} ${collectionName}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -124,7 +128,7 @@ ${chalk.red("🗑️  Removing Collection:")} ${collectionName}
 }
 
 // Tool definition with improved description
-const REMOVE_INDEX_COLECTION_TOOL = {
+const REMOVE_INDEX_COLLECTION_TOOL = {
   name: "remove_index",
   description: `Removed an existing index collection from the vector database.
 This tool is useful for cleaning up or resetting the vector database.
@@ -150,11 +154,17 @@ Parameters explained:
       collectionName: {
         type: "string",
         description: "Name of the collection to remove",
-        enum: ["codebase", "documentation", "diagram", "merged-diagram", "merged-documentation"],
+        enum: [
+          "codebase",
+          "documentation",
+          "diagram",
+          "merged-diagram",
+          "merged-documentation",
+        ],
       },
     },
     required: ["collectionName"],
   },
 };
 
-export { RemoveIndexCollectionTool, REMOVE_INDEX_COLECTION_TOOL };
+export { RemoveIndexCollectionTool, REMOVE_INDEX_COLLECTION_TOOL };

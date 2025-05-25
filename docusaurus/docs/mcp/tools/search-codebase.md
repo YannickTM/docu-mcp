@@ -9,6 +9,7 @@ The `search_codebase` tool searches the indexed codebase for code snippets using
 ## Overview
 
 This tool provides capabilities to:
+
 - Search code using semantic similarity instead of just exact text matches
 - Filter results by file extension, directory, or filename
 - Control the number of results returned
@@ -17,40 +18,41 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| query | string | Yes | - | Natural language or code query to search for |
-| limit | number | No | 10 | Maximum number of results to return |
-| extension | string or string[] | No | - | Filter results by file extension or array of extensions (e.g., ".js", ".ts") |
-| directory | string | No | - | Filter results by directory path |
-| filename | string | No | - | Filter results by filename |
+| Name      | Type               | Required | Default | Description                                                                  |
+| --------- | ------------------ | -------- | ------- | ---------------------------------------------------------------------------- |
+| query     | string             | Yes      | -       | Natural language or code query to search for                                 |
+| limit     | number             | No       | 10      | Maximum number of results to return                                          |
+| extension | string or string[] | No       | -       | Filter results by file extension or array of extensions (e.g., ".js", ".ts") |
+| directory | string             | No       | -       | Filter results by directory path                                             |
+| filename  | string             | No       | -       | Filter results by filename                                                   |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| query | string | The original search query |
+| Property     | Type   | Description                            |
+| ------------ | ------ | -------------------------------------- |
+| query        | string | The original search query              |
 | totalResults | number | Total number of matching results found |
-| results | array | Array of search result objects |
+| results      | array  | Array of search result objects         |
 
 ### Search Result Object
 
 Each result in the results array contains:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| content | string | The content of the matched chunk |
-| similarity | number | Relevance score (0-1) indicating match quality |
-| filePath | string | Absolute path to the file containing the match |
-| filename | string | Name of the file containing the match |
-| extension | string | File extension of the matched file |
-| location | string | File path with position information where applicable |
+| Property   | Type   | Description                                          |
+| ---------- | ------ | ---------------------------------------------------- |
+| content    | string | The content of the matched chunk                     |
+| similarity | number | Relevance score (0-1) indicating match quality       |
+| filePath   | string | Absolute path to the file containing the match       |
+| filename   | string | Name of the file containing the match                |
+| extension  | string | File extension of the matched file                   |
+| location   | string | File path with position information where applicable |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "search_codebase",
@@ -64,6 +66,7 @@ Each result in the results array contains:
 ```
 
 **Response**:
+
 ```json
 {
   "query": "authentication implementation",
@@ -82,7 +85,7 @@ Each result in the results array contains:
       "similarity": 0.8731,
       "filePath": "/absolute/path/to/src/services/auth/token.ts",
       "filename": "token.ts",
-      "extension": ".ts", 
+      "extension": ".ts",
       "location": "/absolute/path/to/src/services/auth/token.ts:15"
     }
   ]
@@ -101,6 +104,7 @@ This tool uses semantic search with vector embeddings to find results based on m
 4. Metadata and snippets from the matching chunks are returned in the results
 
 Benefits of semantic search:
+
 - Find conceptually related code even with different terminology
 - Use natural language questions as search queries
 - Discover connections across the codebase based on semantic meaning
@@ -126,7 +130,8 @@ The tool works with the existing vector database infrastructure:
 - Handles errors gracefully, including missing collections
 
 Key implementation files:
-- Main implementation in `/mcp/src/tools/SearchCodebaseTool.ts` 
+
+- Main implementation in `/mcp/src/tools/SearchCodebaseTool.ts`
 - Uses embedding service from `/mcp/src/services/embeddings.ts`
 - Leverages vector database abstraction in `/mcp/src/services/vectordb.ts`
 - Database-specific implementations in `/mcp/src/services/endpoints/`

@@ -9,6 +9,7 @@ The `create_directory` tool creates a new directory at a specified path with sup
 ## Overview
 
 This tool provides capabilities to:
+
 - Create directories using both absolute and relative paths
 - Automatically create parent directories when needed
 - Return detailed information about the created directory
@@ -16,25 +17,26 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| dirPath | string | Yes | - | Path where the directory should be created (absolute or relative to the project root) |
-| recursive | boolean | No | true | Whether to create parent directories if they don't exist |
+| Name      | Type    | Required | Default | Description                                                                           |
+| --------- | ------- | -------- | ------- | ------------------------------------------------------------------------------------- |
+| dirPath   | string  | Yes      | -       | Path where the directory should be created (absolute or relative to the project root) |
+| recursive | boolean | No       | true    | Whether to create parent directories if they don't exist                              |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| success | boolean | Indicates if the operation was successful |
-| path | string | The absolute path to the created directory |
-| created | string | ISO string of the directory creation time |
-| message | string | A descriptive message about the operation |
+| Property | Type    | Description                                |
+| -------- | ------- | ------------------------------------------ |
+| success  | boolean | Indicates if the operation was successful  |
+| path     | string  | The absolute path to the created directory |
+| created  | string  | ISO string of the directory creation time  |
+| message  | string  | A descriptive message about the operation  |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "create_directory",
@@ -46,6 +48,7 @@ The tool returns an object with the following properties:
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -88,63 +91,82 @@ class CreateDirToolImplementation {
   async createDirectory(dirPath: string, recursive: boolean = true) {
     try {
       // Resolve the absolute path
-      const absolutePath = path.isAbsolute(dirPath) ? dirPath : path.resolve(process.cwd(), dirPath);
-      
+      const absolutePath = path.isAbsolute(dirPath)
+        ? dirPath
+        : path.resolve(process.cwd(), dirPath);
+
       // Create the directory (and parent directories if recursive is true)
       await fs.mkdir(absolutePath, { recursive });
-      
+
       // Get directory stats
       const stats = await fs.stat(absolutePath);
-      
+
       // Return success information
       return {
         success: true,
         path: absolutePath,
         created: stats.birthtime.toISOString(),
-        message: `Directory created successfully at ${absolutePath}`
+        message: `Directory created successfully at ${absolutePath}`,
       };
     } catch (error) {
       console.error(`Error creating directory:`, error);
-      throw new Error(`Failed to create directory: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to create directory: ${(error as Error).message}`,
+      );
     }
   }
-  
+
   processCreateDirectory(input: any) {
     try {
       const { dirPath, recursive = true } = input;
-      
+
       // Log formatted information about the request
-      console.error(`Creating Directory: ${dirPath} (Recursive: ${recursive ? 'Yes' : 'No'})`);
-      
+      console.error(
+        `Creating Directory: ${dirPath} (Recursive: ${recursive ? "Yes" : "No"})`,
+      );
+
       // Execute the directory creation asynchronously
       return this.createDirectory(dirPath, recursive)
-        .then(result => {
+        .then((result) => {
           return {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           };
         })
-        .catch(error => {
+        .catch((error) => {
           return {
-            content: [{ 
-              type: "text", 
-              text: JSON.stringify({
-                error: error instanceof Error ? error.message : String(error),
-                status: "failed"
-              }, null, 2) 
-            }],
-            isError: true
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    error:
+                      error instanceof Error ? error.message : String(error),
+                    status: "failed",
+                  },
+                  null,
+                  2,
+                ),
+              },
+            ],
+            isError: true,
           };
         });
     } catch (error) {
       return {
-        content: [{ 
-          type: "text", 
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: "failed"
-          }, null, 2) 
-        }],
-        isError: true
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                error: error instanceof Error ? error.message : String(error),
+                status: "failed",
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+        isError: true,
       };
     }
   }

@@ -43,16 +43,16 @@ The MCP (Model Context Protocol) server aims to:
 
 ### Technical Stack
 
-| Component                  | Implementation                  | Role                                   |
-| -------------------------- | ------------------------------- | -------------------------------------- |
-| Programming Language       | TypeScript                      | Main language for MCP server           |
-| Runtime Environment        | Node.js                         | Server framework                       |
-| Protocol                   | Model Context Protocol          | Standardized communication layer       |
-| Vector Database            | ChromaDB, LanceDB, Qdrant       | Multi-backend vector DB support        |
-| Embedding Generation       | MiniLM (local), Ollama (optional) | Text to vector conversion           |
-| Persistence & Storage      | Local filesystem                | Storing configuration, logs, metadata  |
-| Documentation Format       | Markdown                        | Generated documentation format         |
-| Code Assistant Integration | Claude-like agent               | Consumes MCP API for development tasks |
+| Component                  | Implementation                    | Role                                   |
+| -------------------------- | --------------------------------- | -------------------------------------- |
+| Programming Language       | TypeScript                        | Main language for MCP server           |
+| Runtime Environment        | Node.js                           | Server framework                       |
+| Protocol                   | Model Context Protocol            | Standardized communication layer       |
+| Vector Database            | ChromaDB, LanceDB, Qdrant         | Multi-backend vector DB support        |
+| Embedding Generation       | MiniLM (local), Ollama (optional) | Text to vector conversion              |
+| Persistence & Storage      | Local filesystem                  | Storing configuration, logs, metadata  |
+| Documentation Format       | Markdown                          | Generated documentation format         |
+| Code Assistant Integration | Claude-like agent                 | Consumes MCP API for development tasks |
 
 ## Current Implementation
 
@@ -115,12 +115,12 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 // Register and initialize tools
 const explainCodeTool = new CodeExplainer();
-const generateDiagramTool = new DigramGenerator();
+const generateDiagramTool = new DiagramGenerator();
 const generateDocumentationTool = new DocumentationGenerator();
 const readDirTool = new ReadDirTool();
 const writeFileTool = new WriteFileTool();
@@ -197,6 +197,7 @@ The vector database implementation uses a flexible abstraction layer:
 #### Core Abstraction Layer
 
 The `/mcp/src/services/vectordb.ts` module provides:
+
 - Unified interface for all vector database operations
 - Automatic provider selection based on environment variables
 - Type definitions for vector points and database configurations
@@ -207,11 +208,13 @@ The `/mcp/src/services/vectordb.ts` module provides:
 DocuMCP supports multiple vector database backends:
 
 - **ChromaDB** (`/mcp/src/services/endpoints/db-chroma.ts`):
+
   - In-memory or persistent storage options
   - Hybrid search capabilities (semantic + keyword)
   - Collection caching for performance
 
 - **LanceDB** (`/mcp/src/services/endpoints/db-lance.ts`):
+
   - File-based columnar storage
   - Automatic schema inference
   - Vector indexing with IVF-PQ
@@ -226,9 +229,10 @@ DocuMCP supports multiple vector database backends:
 #### Collection Types
 
 The system uses multiple collection types:
+
 - `codebase`: For indexed code chunks
 - `documentation`: For individual generated documentation
-- `diagrams`: For individual generated diagrams  
+- `diagrams`: For individual generated diagrams
 - `merged_documentation`: For consolidated documentation across multiple sources
 - `merged_diagrams`: For consolidated diagrams across multiple components
 - `user_guides`: For generated user guides tailored to specific audiences
@@ -236,11 +240,13 @@ The system uses multiple collection types:
 #### Configurability
 
 The vector database provider can be configured via environment variables:
+
 ```
 VECTOR_DB_PROVIDER=lance  # Options: chroma, lance, qdrant
 ```
 
 Provider-specific settings:
+
 ```
 # ChromaDB
 CHROMA_URL=http://localhost:8000

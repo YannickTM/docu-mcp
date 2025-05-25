@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
 import { collectionExists, search } from "../services/vectordb.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Interface for documentation search result
  */
@@ -35,7 +35,7 @@ class SearchDocumentationTool {
    * Builds a filter from search filters
    */
   private buildFilter(
-    filter?: DocumentationSearchFilter
+    filter?: DocumentationSearchFilter,
   ): Record<string, any> | undefined {
     if (!filter) return undefined;
 
@@ -83,7 +83,6 @@ class SearchDocumentationTool {
     query: string,
     limit: number = 10,
     filter?: DocumentationSearchFilter,
-    collectionName: string = "documentation"
   ): Promise<DocumentationSearchResult[]> {
     try {
       const collections = ["documentation", "merged_documentation"];
@@ -93,7 +92,7 @@ class SearchDocumentationTool {
       const embeddingResult = await createEmbedding(query);
       if (embeddingResult.error) {
         throw new Error(
-          `Failed to generate embedding for query: ${embeddingResult.error}`
+          `Failed to generate embedding for query: ${embeddingResult.error}`,
         );
       }
 
@@ -101,8 +100,10 @@ class SearchDocumentationTool {
       for (const collection of collections) {
         // Skip if collection doesn't exist
         if (!(await collectionExists(collection))) {
-          console.warn(
-            chalk.yellow(`Collection ${collection} does not exist, skipping...`)
+          logger.warn(
+            chalk.yellow(
+              `Collection ${collection} does not exist, skipping...`,
+            ),
           );
           continue;
         }
@@ -110,9 +111,9 @@ class SearchDocumentationTool {
         const filterQuery = this.buildFilter(filter);
 
         // Log search info
-        console.warn(chalk.blue(`Searching ${collection} for: "${query}"`));
+        logger.warn(chalk.blue(`Searching ${collection} for: "${query}"`));
         if (filterQuery) {
-          console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+          logger.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
         }
 
         // Search in VectorDB
@@ -120,7 +121,7 @@ class SearchDocumentationTool {
           collection,
           embeddingResult.embedding,
           limit,
-          filterQuery
+          filterQuery,
         );
 
         // Map results to DocumentationSearchResult interface
@@ -146,9 +147,9 @@ class SearchDocumentationTool {
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, limit);
     } catch (error) {
-      console.error(chalk.red(`Error searching documentation:`), error);
+      logger.error(chalk.red(`Error searching documentation:`), error as Error);
       throw new Error(
-        `Failed to search documentation: ${(error as Error).message}`
+        `Failed to search documentation: ${(error as Error).message}`,
       );
     }
   }
@@ -203,10 +204,10 @@ class SearchDocumentationTool {
 
       const header = chalk.blue(`🔍 Searching Documentation`);
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -218,7 +219,6 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
         query,
         limit,
         Object.keys(filter).length > 0 ? filter : undefined,
-        collectionName
       )
         .then((results) => ({
           content: [
@@ -241,7 +241,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   })),
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -256,7 +256,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -273,7 +273,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

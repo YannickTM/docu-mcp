@@ -9,6 +9,7 @@ The `search_documentation` tool enables semantic search for previously generated
 ## Overview
 
 This tool provides capabilities to:
+
 - Search for documentation using natural language queries
 - Find documentation related to concepts, not just exact keyword matches
 - Filter results by directory, filename, section, or tags
@@ -27,42 +28,43 @@ The `search_documentation` tool leverages the vector database to enable semantic
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| query | string | Yes | - | Natural language query to search for |
-| limit | number | No | 10 | Maximum number of results to return |
-| directory | string | No | - | Filter by directory path |
-| filename | string | No | - | Filter by filename |
-| section | string | No | - | Filter by document section |
-| tags | string or string[] | No | - | Filter by associated tags |
+| Name      | Type               | Required | Default | Description                          |
+| --------- | ------------------ | -------- | ------- | ------------------------------------ |
+| query     | string             | Yes      | -       | Natural language query to search for |
+| limit     | number             | No       | 10      | Maximum number of results to return  |
+| directory | string             | No       | -       | Filter by directory path             |
+| filename  | string             | No       | -       | Filter by filename                   |
+| section   | string             | No       | -       | Filter by document section           |
+| tags      | string or string[] | No       | -       | Filter by associated tags            |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| query | string | The original search query |
+| Property     | Type   | Description                                  |
+| ------------ | ------ | -------------------------------------------- |
+| query        | string | The original search query                    |
 | totalResults | number | Total number of documentation segments found |
-| results | array | Array of documentation search results |
+| results      | array  | Array of documentation search results        |
 
 Each result in the array contains:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| content | string | The documentation content |
-| similarity | number | Similarity score between query and documentation (0-1) |
-| filePath | string | Path to the file the documentation was generated from |
-| filename | string | Name of the file |
-| extension | string | File extension |
-| location | string | Location information including position if available |
-| title | string | Title of the documentation section if available |
-| section | string | Section name within the document |
-| tags | string[] | Associated tags for categorization |
+| Property   | Type     | Description                                            |
+| ---------- | -------- | ------------------------------------------------------ |
+| content    | string   | The documentation content                              |
+| similarity | number   | Similarity score between query and documentation (0-1) |
+| filePath   | string   | Path to the file the documentation was generated from  |
+| filename   | string   | Name of the file                                       |
+| extension  | string   | File extension                                         |
+| location   | string   | Location information including position if available   |
+| title      | string   | Title of the documentation section if available        |
+| section    | string   | Section name within the document                       |
+| tags       | string[] | Associated tags for categorization                     |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "search_documentation",
@@ -75,6 +77,7 @@ Each result in the array contains:
 ```
 
 **Response**:
+
 ```json
 {
   "query": "vector database configuration",

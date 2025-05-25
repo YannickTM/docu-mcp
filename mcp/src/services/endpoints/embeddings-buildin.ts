@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { pipeline } from "@huggingface/transformers";
-
+import { logger } from "../logger.js";
 /**
  * Configuration for buildin embedding generation
  */
@@ -24,12 +24,12 @@ export function loadEmbeddingConfig(): BuildinEmbeddingConfig {
   // Get buildin model from environment or default to sentence-transformers/all-MiniLM-L6-v2
   const model =
     process.env.EMBEDDING_MODEL || "sentence-transformers/all-MiniLM-L6-v2";
-    
+
   // Get embedding dimension based on the model:
   // - all-MiniLM-L6-v2: 384 dimensions
   // - other models: 1024 dimensions (default fallback) or from environment
   let dimension: number;
-  
+
   if (model.includes("all-MiniLM-L6-v2")) {
     dimension = 384; // This model has 384 dimensions
   } else {
@@ -50,9 +50,7 @@ let embeddingPipeline: any = null;
  */
 async function getEmbeddingPipeline(model: string) {
   if (!embeddingPipeline) {
-    console.warn(
-      `Initializing buildin embedding pipeline with model: ${model}`
-    );
+    logger.warn(`Initializing buildin embedding pipeline with model: ${model}`);
     embeddingPipeline = await pipeline("feature-extraction", model);
   }
   return embeddingPipeline;
@@ -63,7 +61,7 @@ async function getEmbeddingPipeline(model: string) {
  */
 async function generateEmbedding(
   text: string,
-  model: string
+  model: string,
 ): Promise<number[]> {
   try {
     const pipe = await getEmbeddingPipeline(model);
@@ -77,9 +75,9 @@ async function generateEmbedding(
     // Extract the embedding data from result
     return Array.from(result.data);
   } catch (error) {
-    console.error("Error generating buildin embedding:", error);
+    logger.error("Error generating buildin embedding:", error as Error);
     throw new Error(
-      `Failed to generate buildin embedding: ${(error as Error).message}`
+      `Failed to generate buildin embedding: ${(error as Error).message}`,
     );
   }
 }
@@ -97,7 +95,7 @@ export async function createEmbedding(text: string): Promise<EmbeddingResult> {
 
     return { embedding };
   } catch (error) {
-    console.error("Error creating buildin embedding:", error);
+    logger.error("Error creating buildin embedding:", error as Error);
     return {
       embedding: new Array(loadEmbeddingConfig().dimension).fill(0),
       error: (error as Error).message,
@@ -109,7 +107,7 @@ export async function createEmbedding(text: string): Promise<EmbeddingResult> {
  * Create text embeddings for a batch of texts using buildin model
  */
 export async function createEmbeddings(
-  texts: string[]
+  texts: string[],
 ): Promise<EmbeddingResult[]> {
   const results: EmbeddingResult[] = [];
 

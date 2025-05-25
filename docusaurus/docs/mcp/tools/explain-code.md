@@ -9,6 +9,7 @@ The `explain_code` tool analyzes and explains code through a sequential thinking
 ## Overview
 
 This tool provides capabilities to:
+
 - Analyze code through a flexible, multi-step thinking process
 - Break down complex code into understandable components
 - Build understanding progressively through numbered thoughts
@@ -29,36 +30,37 @@ Like other sequential thinking tools in DocuMCP, the Explain Code tool:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| file | string | Yes | - | File path or direct code content to analyze |
-| explanation | string | No | - | Current explanation (accumulates as thinking progresses) |
-| thought | string | Yes | - | The current thinking step content |
-| nextThoughtNeeded | boolean | Yes | - | Whether another thought step is needed |
-| thoughtNumber | number | Yes | - | Current thought number in sequence |
-| totalThoughts | number | Yes | - | Estimated total thoughts needed |
-| isRevision | boolean | No | false | Whether this thought revises previous thinking |
-| revisesThought | number | No | - | Which thought number is being reconsidered |
-| branchFromThought | number | No | - | Branching point thought number |
-| branchId | string | No | - | Identifier for the current branch |
-| needsMoreThoughts | boolean | No | false | If more thoughts are needed beyond initial estimate |
+| Name              | Type    | Required | Default | Description                                              |
+| ----------------- | ------- | -------- | ------- | -------------------------------------------------------- |
+| file              | string  | Yes      | -       | File path or direct code content to analyze              |
+| explanation       | string  | No       | -       | Current explanation (accumulates as thinking progresses) |
+| thought           | string  | Yes      | -       | The current thinking step content                        |
+| nextThoughtNeeded | boolean | Yes      | -       | Whether another thought step is needed                   |
+| thoughtNumber     | number  | Yes      | -       | Current thought number in sequence                       |
+| totalThoughts     | number  | Yes      | -       | Estimated total thoughts needed                          |
+| isRevision        | boolean | No       | false   | Whether this thought revises previous thinking           |
+| revisesThought    | number  | No       | -       | Which thought number is being reconsidered               |
+| branchFromThought | number  | No       | -       | Branching point thought number                           |
+| branchId          | string  | No       | -       | Identifier for the current branch                        |
+| needsMoreThoughts | boolean | No       | false   | If more thoughts are needed beyond initial estimate      |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| file | string | The file content being analyzed |
-| thoughtNumber | number | The current thought number |
-| totalThoughts | number | Current estimate of total thoughts needed |
-| nextThoughtNeeded | boolean | Whether another thought step is needed |
-| branches | array | List of branch identifiers |
-| thoughtHistoryLength | number | Total count of thoughts processed |
+| Property             | Type    | Description                               |
+| -------------------- | ------- | ----------------------------------------- |
+| file                 | string  | The file content being analyzed           |
+| thoughtNumber        | number  | The current thought number                |
+| totalThoughts        | number  | Current estimate of total thoughts needed |
+| nextThoughtNeeded    | boolean | Whether another thought step is needed    |
+| branches             | array   | List of branch identifiers                |
+| thoughtHistoryLength | number  | Total count of thoughts processed         |
 
 ## Example
 
 **Request (Initial Thought)**:
+
 ```json
 {
   "name": "explain_code",
@@ -74,6 +76,7 @@ The tool returns an object with the following properties:
 ```
 
 **Response**:
+
 ```json
 {
   "file": "function calculateTotal(items) {\n  return items.reduce((total, item) => {\n    return total + (item.price * item.quantity);\n  }, 0);\n}",
@@ -86,6 +89,7 @@ The tool returns an object with the following properties:
 ```
 
 **Request (Middle Thought)**:
+
 ```json
 {
   "name": "explain_code",
@@ -101,6 +105,7 @@ The tool returns an object with the following properties:
 ```
 
 **Request (Revision Thought)**:
+
 ```json
 {
   "name": "explain_code",
@@ -132,6 +137,7 @@ You can provide a path to an existing file:
 ```
 
 The tool will:
+
 1. Check if the path exists
 2. Load the file content automatically
 3. Use that content for code explanation
@@ -163,13 +169,13 @@ The `CodeExplainer` is implemented in `/mcp/src/tools/ExplainCodeTool.ts` with t
 class CodeExplainer {
   thoughtHistory: any[] = [];
   branches: any = {};
-  
+
   async validateThoughtData(input: any) {
     // Validate input data
     if (!data.file || typeof data.file !== "string") {
       throw new Error("Invalid file: must be a string");
     }
-    
+
     // Check if file is a path or direct code content
     let fileContent = data.file;
     const fileExists = await filesystem.fileExists(filePath);
@@ -178,7 +184,7 @@ class CodeExplainer {
       const readResult = await filesystem.readFile(filePath, "utf-8");
       fileContent = readResult.data!.content;
     }
-    
+
     return {
       file: fileContent,
       explanation: data.explanation || "",
@@ -186,32 +192,36 @@ class CodeExplainer {
       // Other properties...
     };
   }
-  
+
   async explainCode(input: any) {
     const validatedInput = await this.validateThoughtData(input);
-    
+
     // Process thought and maintain history
     this.thoughtHistory.push(validatedInput);
-    
+
     // Handle branching and revisions
     if (validatedInput.branchFromThought && validatedInput.branchId) {
       // Store in branch history
     }
-    
+
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify({
-            file: validatedInput.file,
-            thoughtNumber: validatedInput.thoughtNumber,
-            totalThoughts: validatedInput.totalThoughts,
-            nextThoughtNeeded: validatedInput.nextThoughtNeeded,
-            branches: Object.keys(this.branches),
-            thoughtHistoryLength: this.thoughtHistory.length,
-          }, null, 2)
-        }
-      ]
+          text: JSON.stringify(
+            {
+              file: validatedInput.file,
+              thoughtNumber: validatedInput.thoughtNumber,
+              totalThoughts: validatedInput.totalThoughts,
+              nextThoughtNeeded: validatedInput.nextThoughtNeeded,
+              branches: Object.keys(this.branches),
+              thoughtHistoryLength: this.thoughtHistory.length,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
     };
   }
 }

@@ -1,8 +1,10 @@
 // Fixed chalk import for ESM
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
+import { logger } from "../services/logger.js";
 import {
   collectionExists,
+  createCollection,
   search,
   upsertPoints,
   createPoint,
@@ -22,7 +24,7 @@ class DiagramMerger {
       data.sourceDiagrams.length < 2
     ) {
       throw new Error(
-        "Invalid sourceDiagrams: must be an array with at least 2 diagram IDs"
+        "Invalid sourceDiagrams: must be an array with at least 2 diagram IDs",
       );
     }
 
@@ -32,7 +34,7 @@ class DiagramMerger {
       !["summarize", "combine", "synthesize"].includes(data.mergeStrategy)
     ) {
       throw new Error(
-        "Invalid mergeStrategy: must be 'summarize', 'combine', or 'synthesize'"
+        "Invalid mergeStrategy: must be 'summarize', 'combine', or 'synthesize'",
       );
     }
 
@@ -51,7 +53,7 @@ class DiagramMerger {
     }
     if (typeof data.readyToIndexTheMergedDiagram !== "boolean") {
       throw new Error(
-        "Invalid readyToIndexTheMergedDiagram: must be a boolean"
+        "Invalid readyToIndexTheMergedDiagram: must be a boolean",
       );
     }
     if (data.mergedDiagram && typeof data.mergedDiagram !== "string") {
@@ -65,18 +67,18 @@ class DiagramMerger {
     }
     if (data.readyToIndexTheMergedDiagram && !data.mergedDiagram) {
       throw new Error(
-        "readyToIndexTheMergedDiagram is true but mergedDiagram is missing"
+        "readyToIndexTheMergedDiagram is true but mergedDiagram is missing",
       );
     }
     if (data.readyToIndexTheMergedDiagram && !data.diagramType) {
       throw new Error(
-        "readyToIndexTheMergedDiagram is true but diagramType is missing"
+        "readyToIndexTheMergedDiagram is true but diagramType is missing",
       );
     }
 
     // Fetch source diagrams if needed
-    let sourceDiagramContents: any[] = [];
-    let sourceFiles: string[] = [];
+    const sourceDiagramContents: any[] = [];
+    const sourceFiles: string[] = [];
 
     try {
       for (const diagramId of data.sourceDiagrams) {
@@ -108,16 +110,16 @@ class DiagramMerger {
             sourceFiles.push(diagram.filePath);
           }
         } else {
-          console.warn(chalk.yellow(`Diagram ${diagramId} not found`));
+          logger.warn(chalk.yellow(`Diagram ${diagramId} not found`));
         }
       }
     } catch (error) {
-      console.error(
+      logger.error(
         chalk.red(
           `Error fetching source diagrams: ${
             error instanceof Error ? error.message : String(error)
-          }`
-        )
+          }`,
+        ),
       );
     }
 
@@ -131,14 +133,14 @@ class DiagramMerger {
         const collection = "merged_diagrams";
 
         if (!query) {
-          console.error(chalk.red("Invalid semanticSearch: missing query"));
+          logger.error(chalk.red("Invalid semanticSearch: missing query"));
         } else {
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.error(chalk.red(`Collection ${collection} does not exist`));
           } else {
-            console.warn(
-              chalk.blue(`Searching ${collection} collection for: "${query}"`)
+            logger.warn(
+              chalk.blue(`Searching ${collection} collection for: "${query}"`),
             );
 
             // Build filter if provided
@@ -172,9 +174,9 @@ class DiagramMerger {
 
               if (conditions.length > 0) {
                 filterQuery = { must: conditions };
-                console.warn(
+                logger.warn(
                   `With filters:`,
-                  JSON.stringify(filterQuery, null, 2)
+                  JSON.stringify(filterQuery, null, 2),
                 );
               }
             }
@@ -182,10 +184,10 @@ class DiagramMerger {
             // Generate embedding for the query
             const embeddingResult = await createEmbedding(query);
             if (embeddingResult.error) {
-              console.error(
+              logger.error(
                 chalk.red(
-                  `Error generating embedding: ${embeddingResult.error}`
-                )
+                  `Error generating embedding: ${embeddingResult.error}`,
+                ),
               );
             } else {
               // Perform the search
@@ -194,7 +196,7 @@ class DiagramMerger {
                 collection,
                 embeddingResult.embedding,
                 limit,
-                filterQuery
+                filterQuery,
               );
 
               // Process the results
@@ -209,21 +211,21 @@ class DiagramMerger {
                 mergedFromCount: payload.mergedFromCount || 0,
               }));
 
-              console.warn(
+              logger.warn(
                 chalk.green(
-                  `Found ${searchResults.length} results in ${collection} collection`
-                )
+                  `Found ${searchResults.length} results in ${collection} collection`,
+                ),
               );
             }
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -234,13 +236,31 @@ class DiagramMerger {
       data.diagramType
     ) {
       try {
+        // Import getEmbeddingDimension
+        const { getEmbeddingDimension } = await import(
+          "../services/embeddings.js"
+        );
+
+        // Ensure the merged_diagrams collection exists
+        if (!(await collectionExists("merged_diagrams"))) {
+          const embeddingDimension = getEmbeddingDimension();
+          const created = await createCollection(
+            "merged_diagrams",
+            embeddingDimension,
+          );
+          if (!created) {
+            throw new Error(`Failed to create collection merged_diagrams`);
+          }
+          logger.info(chalk.green(`Created merged_diagrams collection`));
+        }
+
         // Generate embedding for the merged diagram content - include diagram type for better search
         const textToEmbed = `${data.diagramType}: ${data.mergedDiagram}`;
         const result = await createEmbedding(textToEmbed);
 
         if (result.error) {
-          console.error(
-            chalk.red(`Error generating embedding: ${result.error}`)
+          logger.error(
+            chalk.red(`Error generating embedding: ${result.error}`),
           );
           throw new Error(`Failed to generate embedding: ${result.error}`);
         }
@@ -265,24 +285,24 @@ class DiagramMerger {
         const point = createPoint(
           `merged_diagram_${Date.now()}_${Math.floor(Math.random() * 1000)}`, // Generate a unique ID
           result.embedding,
-          metadata
+          metadata,
         );
 
         // Add to the merged_diagrams collection
         const success = await upsertPoints("merged_diagrams", [point]);
 
         if (success) {
-          console.error(chalk.green(`Merged diagram indexed successfully`));
+          logger.info(chalk.green(`Merged diagram indexed successfully`));
         } else {
-          console.error(chalk.red(`Failed to index merged diagram`));
+          logger.error(chalk.red(`Failed to index merged diagram`));
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error indexing merged diagram: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -346,8 +366,8 @@ class DiagramMerger {
         header.length,
         thought.length,
         sourceDiagrams.join(", ").length,
-        (mergedDiagram ?? "").length
-      ) + 4
+        (mergedDiagram ?? "").length,
+      ) + 4,
     );
 
     // Ensure displays aren't too long
@@ -402,7 +422,7 @@ class DiagramMerger {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -423,7 +443,7 @@ class DiagramMerger {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -439,7 +459,7 @@ class DiagramMerger {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

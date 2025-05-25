@@ -21,6 +21,7 @@ MCP follows a client-server architecture with three primary primitives:
 3. **Prompts**: Pre-defined templates for LLM interactions that are user-controlled, providing standardized ways to use tools and resources.
 
 The protocol supports multiple transport mechanisms:
+
 - **STDIO**: Used for local integrations where the server runs in the same environment as the client
 - **HTTP+Streamable**: Used for remote connections with HTTP for client requests and streaming for responses
 
@@ -35,18 +36,21 @@ In our DocuMCP project, we've implemented an MCP server with:
 Here's an example of our server initialization:
 
 ```typescript
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 // Create server
-const server = new Server({
-  name: "Doku-Assistant",
-  version: "1.0.0"
-}, {
-  capabilities: {
-    tools: {},
+const server = new Server(
+  {
+    name: "Doku-Assistant",
+    version: "1.0.0",
   },
-});
+  {
+    capabilities: {
+      tools: {},
+    },
+  },
+);
 
 // Register tools and resources...
 

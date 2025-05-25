@@ -9,6 +9,7 @@ The `read_directory` tool lists files and directories in a specified path with d
 ## Overview
 
 This tool provides capabilities to:
+
 - List contents of directories using both absolute and relative paths
 - Recursively traverse subdirectories
 - Filter files by extension
@@ -17,13 +18,13 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| dirPath | string | Yes | - | Directory path to list contents from (absolute or relative to the project root) |
-| recursive | boolean | No | false | Whether to recursively list subdirectories and their contents |
-| includeHidden | boolean | No | false | Whether to include hidden files and directories (those starting with a dot) |
-| fileExtensions | string[] | No | - | Optional list of file extensions to filter by (e.g., [".js", ".ts", ".md"]) |
-| includeStats | boolean | No | true | Whether to include detailed file stats (size, modified date, etc.) |
+| Name           | Type     | Required | Default | Description                                                                     |
+| -------------- | -------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| dirPath        | string   | Yes      | -       | Directory path to list contents from (absolute or relative to the project root) |
+| recursive      | boolean  | No       | false   | Whether to recursively list subdirectories and their contents                   |
+| includeHidden  | boolean  | No       | false   | Whether to include hidden files and directories (those starting with a dot)     |
+| fileExtensions | string[] | No       | -       | Optional list of file extensions to filter by (e.g., [".js", ".ts", ".md"])     |
+| includeStats   | boolean  | No       | true    | Whether to include detailed file stats (size, modified date, etc.)              |
 
 ## Response
 
@@ -31,19 +32,20 @@ The tool returns an array of file and directory information objects:
 
 ### FileInfo Object
 
-| Property | Type | Description |
-|----------|------|-------------|
-| name | string | The name of the file or directory |
-| path | string | The absolute path to the file or directory |
-| type | string | Either "file" or "directory" |
-| size | number | (Files only) Size of the file in bytes |
-| extension | string | (Files only) File extension with leading dot |
-| modified | string | ISO string of the last modification time |
-| isHidden | boolean | Whether the file or directory is hidden (starts with a dot) |
+| Property  | Type    | Description                                                 |
+| --------- | ------- | ----------------------------------------------------------- |
+| name      | string  | The name of the file or directory                           |
+| path      | string  | The absolute path to the file or directory                  |
+| type      | string  | Either "file" or "directory"                                |
+| size      | number  | (Files only) Size of the file in bytes                      |
+| extension | string  | (Files only) File extension with leading dot                |
+| modified  | string  | ISO string of the last modification time                    |
+| isHidden  | boolean | Whether the file or directory is hidden (starts with a dot) |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "read_directory",
@@ -58,6 +60,7 @@ The tool returns an array of file and directory information objects:
 ```
 
 **Response**:
+
 ```json
 [
   {
@@ -128,57 +131,61 @@ The `ReadDirTool` is implemented in `/mcp/src/tools/ReadDirTool.ts`. Key impleme
 // Example implementation (simplified)
 class ReadDirToolImplementation {
   async listDirectory(
-    directoryPath: string, 
+    directoryPath: string,
     recursive: boolean = false,
     includeHidden: boolean = false,
     fileExtensions?: string[],
-    includeStats: boolean = true
+    includeStats: boolean = true,
   ): Promise<FileInfo[]> {
     // Resolve the absolute path
-    const absolutePath = path.isAbsolute(directoryPath) 
-      ? directoryPath 
+    const absolutePath = path.isAbsolute(directoryPath)
+      ? directoryPath
       : path.resolve(process.cwd(), directoryPath);
-    
+
     // Verify it's a directory
     const dirStats = await fs.stat(absolutePath);
     if (!dirStats.isDirectory()) {
       throw new Error(`Path is not a directory: ${absolutePath}`);
     }
-    
+
     // Read directory entries
     const entries = await fs.readdir(absolutePath, { withFileTypes: true });
     let results: FileInfo[] = [];
-    
+
     // Process each entry
     for (const entry of entries) {
       // Skip hidden files/directories if not included
-      if (!includeHidden && entry.name.startsWith('.')) {
+      if (!includeHidden && entry.name.startsWith(".")) {
         continue;
       }
-      
+
       const entryPath = path.join(absolutePath, entry.name);
-      
+
       if (entry.isDirectory()) {
         // Process directory
         const dirInfo: FileInfo = {
           name: entry.name,
           path: entryPath,
           type: "directory",
-          isHidden: entry.name.startsWith('.')
+          isHidden: entry.name.startsWith("."),
         };
-        
+
         // Add stats if requested
         if (includeStats) {
           const stats = await fs.stat(entryPath);
           dirInfo.modified = stats.mtime.toISOString();
         }
-        
+
         results.push(dirInfo);
-        
+
         // Process subdirectory recursively if requested
         if (recursive) {
           const subdirContents = await this.listDirectory(
-            entryPath, recursive, includeHidden, fileExtensions, includeStats
+            entryPath,
+            recursive,
+            includeHidden,
+            fileExtensions,
+            includeStats,
           );
           results = results.concat(subdirContents);
         }
@@ -190,27 +197,27 @@ class ReadDirToolImplementation {
             continue;
           }
         }
-        
+
         // Create file info object
         const fileInfo: FileInfo = {
           name: entry.name,
           path: entryPath,
           type: "file",
-          isHidden: entry.name.startsWith('.'),
-          extension: path.extname(entry.name)
+          isHidden: entry.name.startsWith("."),
+          extension: path.extname(entry.name),
         };
-        
+
         // Add stats if requested
         if (includeStats) {
           const stats = await fs.stat(entryPath);
           fileInfo.size = stats.size;
           fileInfo.modified = stats.mtime.toISOString();
         }
-        
+
         results.push(fileInfo);
       }
     }
-    
+
     return results;
   }
 }

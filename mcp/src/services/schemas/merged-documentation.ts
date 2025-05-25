@@ -1,11 +1,12 @@
-import { CollectionSchema } from "./types.js";
+import type { CollectionSchema } from "./types.js";
 
 /**
  * Schema for merged documentation collection
  * Used for storing merged/summarized documentation from multiple sources
  */
 export const mergedDocumentationSchema: CollectionSchema = {
-  description: "Collection for merged documentation from multiple sources with metadata tracking",
+  description:
+    "Collection for merged documentation from multiple sources with metadata tracking",
   fields: {
     id: "schema_init",
     vector: [], // Will be filled with appropriate size

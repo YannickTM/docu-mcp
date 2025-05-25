@@ -9,6 +9,7 @@ The `read_file` tool reads the content of a file at a specified path and optiona
 ## Overview
 
 This tool provides capabilities to:
+
 - Read files using both absolute and relative paths
 - Support different file encodings
 - Optionally include detailed file metadata
@@ -16,41 +17,42 @@ This tool provides capabilities to:
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| filePath | string | Yes | - | Path to the file to read (absolute or relative to the project root) |
-| encoding | string | No | "utf-8" | File encoding (supports "utf-8", "ascii", "binary", etc.) |
-| includeMetadata | boolean | No | true | Whether to include file metadata in the response |
+| Name            | Type    | Required | Default | Description                                                         |
+| --------------- | ------- | -------- | ------- | ------------------------------------------------------------------- |
+| filePath        | string  | Yes      | -       | Path to the file to read (absolute or relative to the project root) |
+| encoding        | string  | No       | "utf-8" | File encoding (supports "utf-8", "ascii", "binary", etc.)           |
+| includeMetadata | boolean | No       | true    | Whether to include file metadata in the response                    |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| content | string | The content of the file |
-| path | string | The absolute path to the file |
-| size | number | The size of the file content in bytes |
-| encoding | string | The encoding used to read the file |
+| Property | Type   | Description                           |
+| -------- | ------ | ------------------------------------- |
+| content  | string | The content of the file               |
+| path     | string | The absolute path to the file         |
+| size     | number | The size of the file content in bytes |
+| encoding | string | The encoding used to read the file    |
 | metadata | object | (If requested) Contains file metadata |
 
 ### Metadata Properties
 
 When `includeMetadata` is true, the response includes these metadata properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| size | number | File size in bytes |
-| created | string | ISO string of file creation time |
-| modified | string | ISO string of last modification time |
-| accessed | string | ISO string of last access time |
-| extension | string | File extension with leading dot |
-| filename | string | Filename with extension |
-| directory | string | Directory containing the file |
+| Property  | Type   | Description                          |
+| --------- | ------ | ------------------------------------ |
+| size      | number | File size in bytes                   |
+| created   | string | ISO string of file creation time     |
+| modified  | string | ISO string of last modification time |
+| accessed  | string | ISO string of last access time       |
+| extension | string | File extension with leading dot      |
+| filename  | string | Filename with extension              |
+| directory | string | Directory containing the file        |
 
 ## Example
 
 **Request**:
+
 ```json
 {
   "name": "read_file",
@@ -63,6 +65,7 @@ When `includeMetadata` is true, the response includes these metadata properties:
 ```
 
 **Response**:
+
 ```json
 {
   "content": "import React from 'react';\n\ninterface ButtonProps {\n  text: string;\n  onClick: () => void;\n}\n\nconst Button: React.FC<ButtonProps> = ({ text, onClick }) => {\n  return (\n    <button onClick={onClick}>\n      {text}\n    </button>\n  );\n};\n\nexport default Button;",
@@ -111,26 +114,38 @@ The `ReadFileTool` is implemented in `/mcp/src/tools/ReadFileTool.ts`. Key imple
 ```typescript
 // Example implementation (simplified)
 class ReadFileToolImplementation {
-  async readFile(filePath: string, encoding: BufferEncoding = "utf-8", includeMetadata: boolean = true) {
+  async readFile(
+    filePath: string,
+    encoding: BufferEncoding = "utf-8",
+    includeMetadata: boolean = true,
+  ) {
     // Resolve the absolute path
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-    
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(process.cwd(), filePath);
+
     // Check if file exists
     const fileExists = await this.checkFileExists(absolutePath);
     if (!fileExists) {
       throw new Error(`File not found: ${absolutePath}`);
     }
-    
+
     // Read file content and metadata
     const content = await fs.readFile(absolutePath, { encoding });
-    
+
     // Return formatted response
     return {
       content,
       path: absolutePath,
       size: Buffer.byteLength(content, encoding),
       encoding,
-      ...(includeMetadata ? { metadata: { /* file metadata */ } } : {})
+      ...(includeMetadata
+        ? {
+            metadata: {
+              /* file metadata */
+            },
+          }
+        : {}),
     };
   }
 }

@@ -9,6 +9,7 @@ The `generate_diagram` tool creates visual diagrams of code architecture and com
 ## Overview
 
 This tool provides capabilities to:
+
 - Generate diagrams through a sequential thinking process
 - Break down complex visualization tasks into logical steps
 - Support multi-stage analysis and diagram refinement
@@ -31,46 +32,46 @@ The Generate Diagram tool uses the same sequential thinking methodology as the D
 
 ## Parameters
 
-| Name | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| file | string | Yes | - | File path or direct code content to analyze |
-| diagramType | string | Yes | - | Type of diagram to generate (flowchart, sequenceDiagram, classDiagram, stateDiagram, conceptMap, treeDiagram) |
-| needToReadAdditionalFiles | boolean | Yes | - | Whether additional files need to be read for context |
-| additionalFilesToRead | array | No | - | Array of file paths to read for additional context |
-| needToSearch | boolean | Yes | - | Whether semantic search is needed |
-| seamticSearch | object | No | - | Semantic search configuration (Note: parameter name has a typo in the implementation) |
-| seamticSearch.collection | string | No | - | Collection to search in (codebase, documentation, diagram) |
-| seamticSearch.query | string | No | - | The search query string |
-| seamticSearch.filter | object | No | - | Optional filters for the search |
-| diagramElements | array | No | - | Array of elements for the diagram (nodes, edges, containers, annotations) |
-| diagram | string | No | - | The current diagram content in mermaid.js syntax |
-| thought | string | Yes | - | The current thinking step content |
-| nextThoughtNeeded | boolean | Yes | - | Whether another thought step is needed |
-| thoughtNumber | number | Yes | - | Current thought number in sequence |
-| totalThoughts | number | Yes | - | Estimated total thoughts needed (minimum 3) |
-| isRevision | boolean | No | false | Whether this thought revises previous thinking |
-| revisesThought | number | No | - | Which thought number is being reconsidered |
-| branchFromThought | number | No | - | Branching point thought number |
-| branchId | string | No | - | Identifier for the current branch |
-| needsMoreThoughts | boolean | No | false | If more thoughts are needed beyond initial estimate |
-| readyToIndexTheDiagram | boolean | Yes | - | Whether the diagram is ready to be indexed in the vector database |
+| Name                      | Type    | Required | Default | Description                                                                                                   |
+| ------------------------- | ------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| file                      | string  | Yes      | -       | File path or direct code content to analyze                                                                   |
+| diagramType               | string  | Yes      | -       | Type of diagram to generate (flowchart, sequenceDiagram, classDiagram, stateDiagram, conceptMap, treeDiagram) |
+| needToReadAdditionalFiles | boolean | Yes      | -       | Whether additional files need to be read for context                                                          |
+| additionalFilesToRead     | array   | No       | -       | Array of file paths to read for additional context                                                            |
+| needToSearch              | boolean | Yes      | -       | Whether semantic search is needed                                                                             |
+| semanticSearch            | object  | No       | -       | Semantic search configuration (Note: parameter name has a typo in the implementation)                         |
+| semanticSearch.collection | string  | No       | -       | Collection to search in (codebase, documentation, diagram)                                                    |
+| semanticSearch.query      | string  | No       | -       | The search query string                                                                                       |
+| semanticSearch.filter     | object  | No       | -       | Optional filters for the search                                                                               |
+| diagramElements           | array   | No       | -       | Array of elements for the diagram (nodes, edges, containers, annotations)                                     |
+| diagram                   | string  | No       | -       | The current diagram content in mermaid.js syntax                                                              |
+| thought                   | string  | Yes      | -       | The current thinking step content                                                                             |
+| nextThoughtNeeded         | boolean | Yes      | -       | Whether another thought step is needed                                                                        |
+| thoughtNumber             | number  | Yes      | -       | Current thought number in sequence                                                                            |
+| totalThoughts             | number  | Yes      | -       | Estimated total thoughts needed (minimum 3)                                                                   |
+| isRevision                | boolean | No       | false   | Whether this thought revises previous thinking                                                                |
+| revisesThought            | number  | No       | -       | Which thought number is being reconsidered                                                                    |
+| branchFromThought         | number  | No       | -       | Branching point thought number                                                                                |
+| branchId                  | string  | No       | -       | Identifier for the current branch                                                                             |
+| needsMoreThoughts         | boolean | No       | false   | If more thoughts are needed beyond initial estimate                                                           |
+| readyToIndexTheDiagram    | boolean | Yes      | -       | Whether the diagram is ready to be indexed in the vector database                                             |
 
 ## Response
 
 The tool returns an object with the following properties:
 
-| Property | Type | Description |
-|----------|------|-------------|
-| file | string | The file content being analyzed |
-| contentOfAdditionalFilesToRead | array | Content of additional files that were read |
-| semanticSearchResult | array | Results from semantic search if performed |
-| diagramType | string | The type of diagram being generated |
-| diagramElementsLength | number | Count of diagram elements defined |
-| thoughtNumber | number | The current thought number |
-| totalThoughts | number | Current estimate of total thoughts needed |
-| nextThoughtNeeded | boolean | Whether another thought step is needed |
-| branches | array | List of branch identifiers |
-| thoughtHistoryLength | number | Total count of thoughts processed |
+| Property                       | Type    | Description                                |
+| ------------------------------ | ------- | ------------------------------------------ |
+| file                           | string  | The file content being analyzed            |
+| contentOfAdditionalFilesToRead | array   | Content of additional files that were read |
+| semanticSearchResult           | array   | Results from semantic search if performed  |
+| diagramType                    | string  | The type of diagram being generated        |
+| diagramElementsLength          | number  | Count of diagram elements defined          |
+| thoughtNumber                  | number  | The current thought number                 |
+| totalThoughts                  | number  | Current estimate of total thoughts needed  |
+| nextThoughtNeeded              | boolean | Whether another thought step is needed     |
+| branches                       | array   | List of branch identifiers                 |
+| thoughtHistoryLength           | number  | Total count of thoughts processed          |
 
 ## Vector Database Integration
 
@@ -82,6 +83,7 @@ When `readyToIndexTheDiagram` is set to `true` and the diagram is complete, the 
 4. Enables the diagram to be searched and retrieved later
 
 This integration allows for:
+
 - Searching diagrams by content similarity
 - Finding diagrams related to specific code components
 - Retrieving diagrams for specific diagram types
@@ -89,6 +91,7 @@ This integration allows for:
 ## Example
 
 **Request (Initial Thought)**:
+
 ```json
 {
   "name": "generate_diagram",
@@ -109,6 +112,7 @@ This integration allows for:
 ```
 
 **Response**:
+
 ```json
 {
   "file": "// AuthService code content...",
@@ -125,6 +129,7 @@ This integration allows for:
 ```
 
 **Request (Middle Thought)**:
+
 ```json
 {
   "name": "generate_diagram",
@@ -158,6 +163,7 @@ This integration allows for:
 ```
 
 **Request (Final Thought)**:
+
 ```json
 {
   "name": "generate_diagram",
@@ -224,13 +230,14 @@ You can provide a path to an existing file:
 {
   "name": "generate_diagram",
   "arguments": {
-    "file": "/path/to/component.jsx",
+    "file": "/path/to/component.jsx"
     // Other parameters...
   }
 }
 ```
 
 The tool will:
+
 1. Check if the path exists
 2. Load the file content automatically
 3. Use that content for diagram analysis
@@ -243,18 +250,20 @@ Alternatively, you can provide the code content directly:
 {
   "name": "generate_diagram",
   "arguments": {
-    "file": "class AuthService {\n  login(credentials) {\n    // Authentication logic...\n  }\n}",
+    "file": "class AuthService {\n  login(credentials) {\n    // Authentication logic...\n  }\n}"
     // Other parameters...
   }
 }
 ```
 
 When direct code is provided, the tool:
+
 1. Attempts to detect if the string is a valid path
 2. If not, it treats the content as direct code for analysis
 3. Proceeds with the diagramming process
 
 This flexibility means you can diagram code that:
+
 - Exists in your codebase
 - Is being developed but not yet saved
 - Is provided by other tools or generators
@@ -365,9 +374,9 @@ The `diagramElements` parameter accepts an array of objects with the following s
     "key1": "value1",
     "key2": "value2"
   },
-  "source": "source_id",  // For edges
-  "target": "target_id",  // For edges
-  "contains": ["child_id1", "child_id2"]  // For containers
+  "source": "source_id", // For edges
+  "target": "target_id", // For edges
+  "contains": ["child_id1", "child_id2"] // For containers
 }
 ```
 
@@ -378,6 +387,7 @@ These elements help track the diagram structure during the sequential thinking p
 Here's an example that demonstrates the use of additional file reading and semantic search:
 
 **Request with Additional Files and Semantic Search**:
+
 ```json
 {
   "name": "generate_diagram",
@@ -390,7 +400,7 @@ Here's an example that demonstrates the use of additional file reading and seman
       "/path/to/InventoryService.js"
     ],
     "needToSearch": true,
-    "seamticSearch": {
+    "semanticSearch": {
       "collection": "documentation",
       "query": "order processing workflow",
       "filter": {

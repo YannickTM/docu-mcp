@@ -3,7 +3,7 @@ sidebar_position: 1
 title: Overview
 ---
 
-# MCP Tools 
+# MCP Tools
 
 DocuMCP provides a set of tools that can be called by MCP clients to perform specific actions. These tools are designed for various tasks including file operations, search, code analysis, documentation generation, and diagram creation.
 
@@ -66,6 +66,7 @@ Many of DocuMCP's tools integrate with a vector database for efficient semantic 
 - **Storage**: `generate_documentation` and `generate_diagram` store their outputs for later retrieval
 
 The vector database integration supports multiple backends:
+
 - **ChromaDB**: In-memory and persistent vector database with hybrid search
 - **LanceDB**: High-performance columnar database optimized for vector search
 - **Qdrant**: Production-ready vector database with filtering capabilities
@@ -73,6 +74,7 @@ The vector database integration supports multiple backends:
 ## Embedding Generation
 
 Text is converted to vector embeddings using:
+
 - **Built-in**: Lightweight embedding models like MiniLM for local processing
 - **Ollama**: Integration with local Ollama models for higher-quality embeddings
 - **Optional API-based**: Support for external embedding services (configurable)
@@ -97,18 +99,18 @@ class ToolImplementation {
       if (!input.requiredParam) {
         throw new Error("Required parameter missing");
       }
-      
+
       // Perform the operation
       const result = await this.performOperation(input);
-      
+
       // Return successful response
       return {
         content: [
           {
             type: "text",
-            text: JSON.stringify(result, null, 2)
-          }
-        ]
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
       };
     } catch (error) {
       // Return error response
@@ -119,14 +121,14 @@ class ToolImplementation {
             text: JSON.stringify(
               {
                 error: error instanceof Error ? error.message : String(error),
-                status: "failed"
+                status: "failed",
               },
               null,
-              2
-            )
-          }
+              2,
+            ),
+          },
         ],
-        isError: true
+        isError: true,
       };
     }
   }
@@ -142,6 +144,7 @@ Several tools use a sequential thinking approach for complex tasks:
 - **Explain Code**: Step-by-step code analysis and explanation
 
 This approach enables:
+
 - Breaking complex tasks into logical steps
 - Building understanding progressively
 - Revising earlier thoughts when new insights emerge
@@ -162,7 +165,7 @@ const indexFileTool = new IndexFileTool();
 const indexDirTool = new IndexDirTool();
 const searchCodebaseTool = new SearchCodebaseTool();
 const explainCodeTool = new CodeExplainer();
-const generateDiagramTool = new DigramGenerator();
+const generateDiagramTool = new DiagramGenerator();
 const searchDiagramTool = new SearchDiagramTool();
 const searchDocumentationTool = new SearchDocumentationTool();
 const generateDocumentationTool = new DocumentationGenerator();
@@ -181,7 +184,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     INDEX_DIR_TOOL,
     SEARCH_CODEBASE_TOOL,
     SEARCH_DIAGRAM_TOOL,
-    SEARCH_DOCUMENTATION_TOOL
+    SEARCH_DOCUMENTATION_TOOL,
   ],
 }));
 ```

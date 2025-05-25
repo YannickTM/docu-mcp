@@ -42,7 +42,7 @@ export function loadEmbeddingConfig(): EmbeddingConfig {
   const dimension = parseInt(process.env.EMBEDDING_DIMENSION || "1024");
 
   // Get Ollama configuration
-  const ollamaUrl = process.env.OLLAMA_URL || "http://buildinhost:11434";
+  const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
   const ollamaModel = process.env.EMBEDDING_MODEL || "bge-m3";
 
   return {
@@ -73,7 +73,7 @@ export async function createEmbedding(text: string): Promise<EmbeddingResult> {
  * Create text embeddings for a batch of texts
  */
 export async function createEmbeddings(
-  texts: string[]
+  texts: string[],
 ): Promise<EmbeddingResult[]> {
   // Load configuration
   const config = loadEmbeddingConfig();

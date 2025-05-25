@@ -2,8 +2,8 @@
 import chalk from "chalk";
 import path from "path";
 import * as filesystem from "../services/filesystem.js";
-
-class DigramGenerator {
+import { logger } from "../services/logger.js";
+class DiagramGenerator {
   thoughtHistory: any[] = [];
   branches: any = {};
 
@@ -35,7 +35,7 @@ class DigramGenerator {
     }
     if (data.readyToIndexTheDiagram && !data.diagram) {
       throw new Error(
-        "Invalid diagram: must be provided when readyToIndexTheDiagram is true"
+        "Invalid diagram: must be provided when readyToIndexTheDiagram is true",
       );
     }
 
@@ -58,30 +58,46 @@ class DigramGenerator {
           throw new Error(readResult.message);
         }
 
-        fileContent = readResult.data!.content;
-        console.error(chalk.green(`Loaded file content from: ${filePath}`));
+        if (!readResult.data || !readResult.data.content) {
+          logger.warn(`File content is empty or not found for: ${filePath}`);
+          readResult.data = {
+            content: "File content is empty or not found",
+            metadata: {
+              size: 0,
+              created: new Date(),
+              modified: new Date(),
+              accessed: new Date(),
+              extension: path.extname(filePath),
+              filename: path.basename(filePath),
+              directory: path.dirname(filePath),
+            },
+          };
+        }
+
+        fileContent = readResult.data.content;
+        logger.info(chalk.green(`Loaded file content from: ${filePath}`));
       } else {
         // If it doesn't exist, assume it's already code content
-        console.error(
+        logger.error(
           chalk.yellow(
             `Assuming input is code content and not a file path: ${data.file.substring(
               0,
-              50
-            )}...`
-          )
+              50,
+            )}...`,
+          ),
         );
       }
     } catch (error) {
       // If there's an error, assume it's already code content
-      console.error(
+      logger.error(
         chalk.yellow(
           `Error checking file path, assuming it's code: ${
             error instanceof Error ? error.message : String(error)
-          }`
-        )
+          }`,
+        ),
       );
     }
-    
+
     // Handle additional files to read
     let additionalFileContent = undefined;
     if (
@@ -101,14 +117,33 @@ class DigramGenerator {
               if (fileExists) {
                 const readResult = await filesystem.readFile(
                   resolvedPath,
-                  "utf-8"
+                  "utf-8",
                 );
                 if (!readResult.success) {
                   return `Failed to read ${filePath}: ${readResult.message}`;
                 }
+
+                if (!readResult.data || !readResult.data.content) {
+                  logger.warn(
+                    `File content is empty or not found for: ${filePath}`,
+                  );
+                  readResult.data = {
+                    content: "File content is empty or not found",
+                    metadata: {
+                      size: 0,
+                      created: new Date(),
+                      modified: new Date(),
+                      accessed: new Date(),
+                      extension: path.extname(filePath),
+                      filename: path.basename(filePath),
+                      directory: path.dirname(filePath),
+                    },
+                  };
+                }
+
                 return {
                   path: filePath,
-                  content: readResult.data!.content,
+                  content: readResult.data.content,
                 };
               } else {
                 return {
@@ -124,25 +159,25 @@ class DigramGenerator {
                 }`,
               };
             }
-          })
+          }),
         );
         additionalFileContent = additionalContents;
-        console.warn(
-          chalk.green(`Loaded ${additionalContents.length} additional files`)
+        logger.warn(
+          chalk.green(`Loaded ${additionalContents.length} additional files`),
         );
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error processing additional files: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
-    
+
     // Handle semantic search
-    let searchResults = data.seamticSearch || undefined;
+    let searchResults = data.semanticSearch || undefined;
     if (data.semanticSearch) {
       try {
         // Import required search services
@@ -153,23 +188,23 @@ class DigramGenerator {
 
         const { collection, query, filter } = data.semanticSearch;
         if (!collection || !query) {
-          console.error(
-            chalk.red("Invalid semanticSearch: missing collection or query")
+          logger.error(
+            chalk.red("Invalid semanticSearch: missing collection or query"),
           );
         } else {
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.error(chalk.red(`Collection ${collection} does not exist`));
           } else {
-            console.warn(
-              chalk.blue(`Searching ${collection} collection for: "${query}"`)
+            logger.warn(
+              chalk.blue(`Searching ${collection} collection for: "${query}"`),
             );
-            
+
             // Build filter if provided
-            let filterQuery = undefined;
+            let filterQuery = {};
             if (filter) {
               const conditions = [];
-              
+
               // Add filter conditions based on the provided filters
               if (filter.filename) {
                 conditions.push({
@@ -177,34 +212,39 @@ class DigramGenerator {
                   match: { text: filter.filename },
                 });
               }
-              
+
               if (filter.directory) {
                 conditions.push({
                   key: "directory",
                   match: { text: filter.directory },
                 });
               }
-              
+
               if (filter.diagramType && collection === "diagrams") {
                 conditions.push({
                   key: "diagramType",
                   match: { text: filter.diagramType },
                 });
               }
-              
-              if (conditions.length > 0) {
-                filterQuery = { must: conditions };
-                console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+
+              // Only log if we have actual filters
+              if (Object.keys(filterQuery).length > 0) {
+                logger.warn(
+                  `With filters:`,
+                  JSON.stringify(filterQuery, null, 2),
+                );
+              } else {
+                filterQuery = {};
               }
             }
 
             // Generate embedding for the query
             const embeddingResult = await createEmbedding(query);
             if (embeddingResult.error) {
-              console.error(
+              logger.error(
                 chalk.red(
-                  `Error generating embedding: ${embeddingResult.error}`
-                )
+                  `Error generating embedding: ${embeddingResult.error}`,
+                ),
               );
             } else {
               // Perform the search
@@ -213,67 +253,98 @@ class DigramGenerator {
                 collection,
                 embeddingResult.embedding,
                 limit,
-                filterQuery
+                filterQuery,
               );
 
               // Process the results based on the collection type
-              searchResults = searchResult.map(({ score, payload }) => ({
-                content: payload.content || "",
-                similarity: parseFloat(score.toFixed(4)),
-                filePath: payload.filePath || "",
-                filename: payload.filename || "",
-                location: `${payload.filePath}${
-                  payload.startPosition ? `:${payload.startPosition}` : ""
-                }`,
-                // Include collection-specific metadata
-                ...(collection === "documentation" && {
-                  title: payload.title,
-                  docType: payload.docType,
-                  section: payload.section,
-                  tags: payload.tags,
+              const processedResults = searchResult.map(
+                ({ score, payload }) => ({
+                  content: payload.content || "",
+                  similarity: parseFloat(score.toFixed(4)),
+                  filePath: payload.filePath || "",
+                  filename: payload.filename || "",
+                  location: `${payload.filePath}${
+                    payload.startPosition ? `:${payload.startPosition}` : ""
+                  }`,
+                  // Include collection-specific metadata
+                  ...(collection === "documentation" && {
+                    title: payload.title,
+                    docType: payload.docType,
+                    section: payload.section,
+                    tags: payload.tags,
+                  }),
+                  ...(collection === "diagrams" && {
+                    title: payload.title,
+                    diagramType: payload.diagramType,
+                    description: payload.description,
+                  }),
                 }),
-                ...(collection === "diagrams" && {
-                  title: payload.title,
-                  diagramType: payload.diagramType,
-                  description: payload.description,
-                }),
-              }));
+              );
 
-              console.warn(
+              searchResults = {
+                collection: collection, // assuming 'collection' variable exists
+                query: query,
+                filter: filterQuery,
+                results: processedResults, // add the actual results
+              };
+
+              logger.warn(
                 chalk.green(
-                  `Found ${searchResults.length} results in ${collection} collection`
-                )
+                  `Found ${searchResult.length} results in ${collection} collection`,
+                ),
               );
             }
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
 
-    if (data.readyToIndexTheDiagram && data.file && data.diagram && data.diagramType) {
+    if (
+      data.readyToIndexTheDiagram &&
+      data.file &&
+      data.diagram &&
+      data.diagramType
+    ) {
       // Import required services
-      const { createEmbedding } = await import("../services/embeddings.js");
-      const { upsertPoints, createPoint } = await import("../services/vectordb.js");
-      
+      const { createEmbedding, getEmbeddingDimension } = await import(
+        "../services/embeddings.js"
+      );
+      const { collectionExists, createCollection, upsertPoints, createPoint } =
+        await import("../services/vectordb.js");
+
       try {
+        // Ensure the diagrams collection exists
+        if (!(await collectionExists("diagrams"))) {
+          const embeddingDimension = getEmbeddingDimension();
+          const created = await createCollection(
+            "diagrams",
+            embeddingDimension,
+          );
+          if (!created) {
+            throw new Error(`Failed to create collection diagrams`);
+          }
+          logger.info(chalk.green(`Created diagrams collection`));
+        }
         // Generate embedding for the diagram content - include diagram type in the embedded text
         // to make it more searchable by diagram type
         const textToEmbed = `${data.diagramType}: ${data.diagram}`;
         const result = await createEmbedding(textToEmbed);
-        
+
         if (result.error) {
-          console.error(chalk.red(`Error generating embedding: ${result.error}`));
+          logger.error(
+            chalk.red(`Error generating embedding: ${result.error}`),
+          );
           throw new Error(`Failed to generate embedding: ${result.error}`);
         }
-        
+
         // Create metadata for the diagram
         const metadata = {
           content: data.diagram,
@@ -283,24 +354,32 @@ class DigramGenerator {
           diagramElements: data.diagramElements || [],
           createdAt: new Date().toISOString(),
         };
-        
+
         // Create a point for vector database
         const point = createPoint(
           `diagram_${Date.now()}_${Math.floor(Math.random() * 1000)}`, // Generate a unique ID
           result.embedding,
-          metadata
+          metadata,
         );
-        
+
         // Add to the diagrams collection
         const success = await upsertPoints("diagrams", [point]);
-        
+
         if (success) {
-          console.error(chalk.green(`Diagram indexed successfully for file: ${data.file}`));
+          logger.info(
+            chalk.green(`Diagram indexed successfully for file: ${data.file}`),
+          );
         } else {
-          console.error(chalk.red(`Failed to index diagram for file: ${data.file}`));
+          logger.error(
+            chalk.red(`Failed to index diagram for file: ${data.file}`),
+          );
         }
       } catch (error) {
-        console.error(chalk.red(`Error indexing diagram: ${error instanceof Error ? error.message : String(error)}`));
+        logger.error(
+          chalk.red(
+            `Error indexing diagram: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
       }
     }
 
@@ -357,8 +436,8 @@ class DigramGenerator {
         header.length,
         thought.length,
         file.length,
-        (diagramType ?? "").length
-      ) + 4
+        (diagramType ?? "").length,
+      ) + 4,
     );
     // Ensure file and diagram aren't too long for display by truncating them
     const maxDisplayLength = border.length - 2;
@@ -388,6 +467,8 @@ class DigramGenerator {
 ├${border}┤
 │ ${diagramType} │
 ├${border}┤
+│ current count of diagram elements ${diagramElements?.length || 0} │
+├${border}┤
 │ ${thoughtDisplay} │
 ├${border}┤
 │ ${diagramDisplay} │
@@ -408,7 +489,7 @@ class DigramGenerator {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -429,7 +510,7 @@ class DigramGenerator {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -445,7 +526,7 @@ class DigramGenerator {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -568,13 +649,13 @@ You should:
         type: "boolean",
         description: "If semantic search is needed",
       },
-      seamticSearch: {
+      semanticSearch: {
         type: "object",
         properties: {
           collection: {
             type: "string",
             description: "The collection to search in",
-            enum: ["codebase", "documentation", "diagram"],
+            enum: ["codebase", "documentation", "diagrams"],
           },
           filter: {
             type: "object",
@@ -590,7 +671,14 @@ You should:
               diagramType: {
                 type: "string",
                 description: "The diagram type to filter results by",
-                enum: ["flowchart", "sequenceDiagram", "classDiagram", "stateDiagram", "conceptMap", "treeDiagram"],
+                enum: [
+                  "flowchart",
+                  "sequenceDiagram",
+                  "classDiagram",
+                  "stateDiagram",
+                  "conceptMap",
+                  "treeDiagram",
+                ],
               },
             },
           },
@@ -679,4 +767,4 @@ You should:
   },
 };
 
-export { DigramGenerator, DIAGRAM_TOOL };
+export { DiagramGenerator, DIAGRAM_TOOL };

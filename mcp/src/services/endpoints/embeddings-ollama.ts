@@ -1,6 +1,6 @@
 import "dotenv/config";
 import axios from "axios";
-
+import { logger } from "../logger.js";
 /**
  * Configuration for Ollama embedding generation
  */
@@ -42,7 +42,7 @@ export function loadEmbeddingConfig(): OllamaEmbeddingConfig {
 async function generateEmbedding(
   text: string,
   url: string,
-  model: string
+  model: string,
 ): Promise<number[]> {
   try {
     const response = await axios.post(`${url}/api/embeddings`, {
@@ -56,9 +56,9 @@ async function generateEmbedding(
       throw new Error("Invalid response from Ollama API");
     }
   } catch (error) {
-    console.error("Error generating Ollama embedding:", error);
+    logger.error("Error generating Ollama embedding:", error as Error);
     throw new Error(
-      `Failed to generate Ollama embedding: ${(error as Error).message}`
+      `Failed to generate Ollama embedding: ${(error as Error).message}`,
     );
   }
 }
@@ -76,7 +76,7 @@ export async function createEmbedding(text: string): Promise<EmbeddingResult> {
 
     return { embedding };
   } catch (error) {
-    console.error("Error creating Ollama embedding:", error);
+    logger.error("Error creating Ollama embedding:", error as Error);
     return {
       embedding: new Array(loadEmbeddingConfig().dimension).fill(0),
       error: (error as Error).message,
@@ -88,7 +88,7 @@ export async function createEmbedding(text: string): Promise<EmbeddingResult> {
  * Create text embeddings for a batch of texts using Ollama
  */
 export async function createEmbeddings(
-  texts: string[]
+  texts: string[],
 ): Promise<EmbeddingResult[]> {
   const results: EmbeddingResult[] = [];
 

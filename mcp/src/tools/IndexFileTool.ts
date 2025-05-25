@@ -1,7 +1,11 @@
 import path from "path";
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-import { createEmbedding, getEmbeddingDimension } from "../services/embeddings.js";
+import {
+  createEmbedding,
+  getEmbeddingDimension,
+} from "../services/embeddings.js";
+import { logger } from "../services/logger.js";
 import {
   collectionExists,
   createCollection,
@@ -37,7 +41,7 @@ class IndexFileTool {
   private createChunks(
     content: string,
     chunkSize: number = 512,
-    overlapSize: number = 50
+    overlapSize: number = 50,
   ): string[] {
     const chunks: string[] = [];
     let position = 0;
@@ -70,7 +74,7 @@ class IndexFileTool {
     filePath: string,
     chunkSize: number = 512,
     chunkOverlap: number = 50,
-    collectionName: string = "codebase"
+    collectionName: string = "codebase",
   ): Promise<IndexFileResult> {
     try {
       // Read file content using filesystem functions
@@ -80,24 +84,33 @@ class IndexFileTool {
         throw new Error(readResult.message);
       }
 
+      if (!readResult.data || !readResult.data.content) {
+        logger.warn("File content is empty or not found");
+        readResult.data = {
+          content: "File content is empty or not found",
+          metadata: {
+            size: 0,
+            created: new Date(),
+            modified: new Date(),
+            accessed: new Date(),
+            extension: path.extname(filePath),
+            filename: path.basename(filePath),
+            directory: path.dirname(filePath),
+          },
+        };
+      }
+
       // Extract content and metadata
-      const { content, metadata: fileMetadata } = readResult.data!;
-      const absolutePath = readResult.data!.metadata?.directory
+      const { content, metadata: fileMetadata } = readResult.data;
+      const absolutePath = readResult.data.metadata?.directory
         ? path.join(
-            readResult.data!.metadata.directory,
-            readResult.data!.metadata.filename!
+            readResult.data.metadata.directory,
+            readResult.data.metadata.filename || "",
           )
         : filesystem.resolvePath(filePath);
 
       // Create chunks
       const chunks = this.createChunks(content, chunkSize, chunkOverlap);
-      /*console.log(
-        chalk.blue(
-          `Generated ${chunks.length} chunks from ${path.basename(
-            absolutePath
-          )}`
-        )
-      );*/
 
       // Early return if no chunks
       if (chunks.length === 0) {
@@ -119,20 +132,18 @@ class IndexFileTool {
 
       // Get embedding dimension from configuration
       const embeddingDimension = getEmbeddingDimension();
-      
+
       // Ensure collection exists
       if (!(await collectionExists(collectionName))) {
         const created = await createCollection(
           collectionName,
-          embeddingDimension
+          embeddingDimension,
         );
         if (!created) {
-          throw new Error(
-            `Failed to create collection ${collectionName}`
-          );
+          throw new Error(`Failed to create collection ${collectionName}`);
         }
       }
-      
+
       // Generate embeddings and create points
       const points = [];
       let successCount = 0;
@@ -143,10 +154,10 @@ class IndexFileTool {
           const embeddingResult = await createEmbedding(chunks[i]);
 
           if (embeddingResult.error) {
-            console.warn(
+            logger.warn(
               chalk.yellow(
-                `Warning: Error generating embedding for chunk ${i}: ${embeddingResult.error}`
-              )
+                `Warning: Error generating embedding for chunk ${i}: ${embeddingResult.error}`,
+              ),
             );
             errorCount++;
             continue;
@@ -172,7 +183,7 @@ class IndexFileTool {
           points.push(point);
           successCount++;
         } catch (error) {
-          console.error(chalk.red(`Error processing chunk ${i}:`, error));
+          logger.error(chalk.red(`Error processing chunk ${i}:`, error));
           errorCount++;
         }
       }
@@ -182,8 +193,10 @@ class IndexFileTool {
         points.length > 0 ? await upsertPoints(collectionName, points) : false;
 
       if (storedInDatabase) {
-        console.warn(
-          chalk.green(`Successfully stored ${points.length} points in VectorDB`)
+        logger.warn(
+          chalk.green(
+            `Successfully stored ${points.length} points in VectorDB`,
+          ),
         );
       }
 
@@ -202,7 +215,7 @@ class IndexFileTool {
         message: `File indexed successfully with ${chunkSize} chunk size and ${chunkOverlap} overlap`,
       };
     } catch (error) {
-      console.error(chalk.red(`Error indexing file ${filePath}:`, error));
+      logger.error(chalk.red(`Error indexing file ${filePath}:`, error));
       throw new Error(`Failed to index file: ${(error as Error).message}`);
     }
   }
@@ -224,7 +237,7 @@ class IndexFileTool {
       }
 
       // Log formatted information
-      console.error(`
+      logger.info(`
 ${chalk.blue("🔍 Indexing File:")} ${filePath}
 ${chalk.gray("├─")} Chunk Size: ${chalk.yellow(chunkSize)}
 ${chalk.gray("├─")} Chunk Overlap: ${chalk.yellow(chunkOverlap)}
@@ -251,7 +264,7 @@ ${chalk.gray("└─")} Collection: ${chalk.yellow(collectionName)}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -268,7 +281,7 @@ ${chalk.gray("└─")} Collection: ${chalk.yellow(collectionName)}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

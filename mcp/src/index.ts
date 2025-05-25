@@ -5,9 +5,10 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { logger } from "./services/logger.js";
 
 import { CodeExplainer, CODE_EXPLAIN_TOOL } from "./tools/ExplainCodeTool.js";
-import { DigramGenerator, DIAGRAM_TOOL } from "./tools/GenerateDiagramTool.js";
+import { DiagramGenerator, DIAGRAM_TOOL } from "./tools/GenerateDiagramTool.js";
 import {
   DocumentationGenerator,
   DOCUMENTATION_TOOL,
@@ -32,16 +33,13 @@ import {
 } from "./tools/SearchDocumentationTool.js";
 import {
   RemoveIndexCollectionTool,
-  REMOVE_INDEX_COLECTION_TOOL,
+  REMOVE_INDEX_COLLECTION_TOOL,
 } from "./tools/RemoveIndexCollection.js";
 import {
   DocumentationMerger,
   MERGE_DOCUMENTATION_TOOL,
 } from "./tools/MergeDocumentationTool.js";
-import {
-  DiagramMerger,
-  MERGE_DIAGRAM_TOOL,
-} from "./tools/MergeDiagramTool.js";
+import { DiagramMerger, MERGE_DIAGRAM_TOOL } from "./tools/MergeDiagramTool.js";
 import {
   UserGuideGenerator,
   USER_GUIDE_TOOL,
@@ -60,11 +58,11 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 // tools
 const explainCodeTool = new CodeExplainer();
-const generateDiagramTool = new DigramGenerator();
+const generateDiagramTool = new DiagramGenerator();
 const generateDocumentationTool = new DocumentationGenerator();
 const readDirTool = new ReadDirTool();
 const writeFileTool = new WriteFileTool();
@@ -99,7 +97,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     SEARCH_DIAGRAM_TOOL,
     SEARCH_DOCUMENTATION_TOOL,
     SEARCH_USER_GUIDE_TOOL,
-    REMOVE_INDEX_COLECTION_TOOL,
+    REMOVE_INDEX_COLLECTION_TOOL,
   ],
 }));
 
@@ -109,7 +107,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return explainCodeTool.explainCode(request.params.arguments);
     case DOCUMENTATION_TOOL.name:
       return generateDocumentationTool.generateDocumentation(
-        request.params.arguments
+        request.params.arguments,
       );
     case DIAGRAM_TOOL.name:
       return generateDiagramTool.generateDiagram(request.params.arguments);
@@ -131,20 +129,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return searchDiagramTool.processSearchDiagrams(request.params.arguments);
     case SEARCH_DOCUMENTATION_TOOL.name:
       return searchDocumentationTool.processSearchDocumentation(
-        request.params.arguments
+        request.params.arguments,
       );
-    case REMOVE_INDEX_COLECTION_TOOL.name:
+    case REMOVE_INDEX_COLLECTION_TOOL.name:
       return removeIndexCollectionTool.processRemoveCollection(
-        request.params.arguments
+        request.params.arguments,
       );
     case MERGE_DOCUMENTATION_TOOL.name:
-      return mergeDocumentationTool.mergeDocumentation(request.params.arguments);
+      return mergeDocumentationTool.mergeDocumentation(
+        request.params.arguments,
+      );
     case MERGE_DIAGRAM_TOOL.name:
       return mergeDiagramTool.mergeDiagram(request.params.arguments);
     case USER_GUIDE_TOOL.name:
       return userGuideGenerator.generateUserGuide(request.params.arguments);
     case SEARCH_USER_GUIDE_TOOL.name:
-      return searchUserGuideTool.processSearchUserGuides(request.params.arguments);
+      return searchUserGuideTool.processSearchUserGuides(
+        request.params.arguments,
+      );
   }
   return {
     content: [
@@ -160,11 +162,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(
-    "DocuMCP Server running on stdio - RAG-enabled with Qdrant vector database"
+  logger.info(
+    "DocuMCP Server running on stdio - RAG-enabled with Qdrant vector database",
   );
 }
 runServer().catch((error) => {
-  console.error("Fatal error running server:", error);
+  logger.error("Fatal error running server:", error);
   process.exit(1);
 });

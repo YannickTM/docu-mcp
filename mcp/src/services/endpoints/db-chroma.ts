@@ -1,6 +1,7 @@
 import "dotenv/config";
-import { ChromaClient, Collection } from "chromadb";
-
+import type { Collection } from "chromadb";
+import { ChromaClient } from "chromadb";
+import { logger } from "../logger.js";
 /**
  * Interface for vector points to be stored in ChromaDB
  */
@@ -36,7 +37,7 @@ export const healthCheck = async (): Promise<boolean> => {
     await client.listCollections();
     return true;
   } catch (error) {
-    console.error("ChromaDB health check failed:", error);
+    logger.error("ChromaDB health check failed:", error as Error);
     throw error;
   }
 };
@@ -45,7 +46,7 @@ export const healthCheck = async (): Promise<boolean> => {
  * Get a collection by name, with caching
  */
 const getCollection = async (
-  collectionName: string
+  collectionName: string,
 ): Promise<Collection | null> => {
   if (collectionCache[collectionName]) {
     return collectionCache[collectionName];
@@ -63,7 +64,7 @@ const getCollection = async (
 
     return null;
   } catch (error) {
-    console.error(`Error getting collection ${collectionName}:`, error);
+    logger.error(`Error getting collection ${collectionName}:`, error as Error);
     throw error;
   }
 };
@@ -72,15 +73,15 @@ const getCollection = async (
  * Check if a collection exists
  */
 export const collectionExists = async (
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> => {
   try {
     const collection = await getCollection(collectionName);
     return collection !== null;
   } catch (error) {
-    console.error(
+    logger.error(
       `Error checking if collection ${collectionName} exists:`,
-      error
+      error as Error,
     );
     throw error;
   }
@@ -92,7 +93,7 @@ export const collectionExists = async (
 export const createCollection = async (
   collectionName: string,
   vectorSize: number,
-  distance: "cosine" | "l2" | "ip" = "cosine"
+  distance: "cosine" | "l2" | "ip" = "cosine",
 ): Promise<boolean> => {
   try {
     // Check if collection already exists
@@ -114,7 +115,10 @@ export const createCollection = async (
     collectionCache[collectionName] = collection;
     return true;
   } catch (error) {
-    console.error(`Error creating collection ${collectionName}:`, error);
+    logger.error(
+      `Error creating collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -131,7 +135,7 @@ const formatId = (id: string | number): string => {
  */
 export const upsertPoints = async (
   collectionName: string,
-  points: VectorPoint[]
+  points: VectorPoint[],
 ): Promise<boolean> => {
   try {
     // Get collection
@@ -139,7 +143,7 @@ export const upsertPoints = async (
     if (!collection) {
       const created = await createCollection(
         collectionName,
-        points[0].vector.length
+        points[0].vector.length,
       );
       if (!created) {
         throw new Error(`Failed to create collection ${collectionName}`);
@@ -147,7 +151,7 @@ export const upsertPoints = async (
       collection = await getCollection(collectionName);
       if (!collection) {
         throw new Error(
-          `Failed to get collection ${collectionName} after creation`
+          `Failed to get collection ${collectionName} after creation`,
         );
       }
     }
@@ -168,7 +172,10 @@ export const upsertPoints = async (
 
     return true;
   } catch (error) {
-    console.error(`Error upserting points to ${collectionName}:`, error);
+    logger.error(
+      `Error upserting points to ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -178,7 +185,7 @@ export const upsertPoints = async (
  * This is a simplification and might need adjustment based on your specific filter needs
  */
 const convertFilter = (
-  filter?: Record<string, any>
+  filter?: Record<string, any>,
 ): Record<string, any> | undefined => {
   if (!filter) return undefined;
 
@@ -210,7 +217,7 @@ export const search = async (
   collectionName: string,
   vector: number[],
   limit: number = 10,
-  filter?: Record<string, any>
+  filter?: Record<string, any>,
 ): Promise<any[]> => {
   try {
     // Get collection
@@ -248,7 +255,10 @@ export const search = async (
 
     return formattedResults;
   } catch (error) {
-    console.error(`Error searching in collection ${collectionName}:`, error);
+    logger.error(
+      `Error searching in collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -261,7 +271,7 @@ export const search = async (
 export function createPoint(
   id: string | number,
   vector: number[],
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
 ): VectorPoint {
   return {
     id,
@@ -273,24 +283,30 @@ export function createPoint(
 /**
  * Delete a collection from ChromaDB
  */
-export const deleteCollection = async (collectionName: string): Promise<boolean> => {
+export const deleteCollection = async (
+  collectionName: string,
+): Promise<boolean> => {
   try {
     // Check if collection exists
     if (await collectionExists(collectionName)) {
       await client.deleteCollection({ name: collectionName });
-      
+
       // Remove from cache
       if (collectionCache[collectionName]) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete collectionCache[collectionName];
       }
-      
-      console.warn(`Deleted ChromaDB collection '${collectionName}'`);
+
+      logger.warn(`Deleted ChromaDB collection '${collectionName}'`);
       return true;
     }
-    
+
     return false;
   } catch (error) {
-    console.error(`Error deleting collection ${collectionName}:`, error);
+    logger.error(
+      `Error deleting collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };

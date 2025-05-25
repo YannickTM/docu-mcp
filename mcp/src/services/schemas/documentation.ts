@@ -1,4 +1,4 @@
-import { CollectionSchema } from "./types.js";
+import type { CollectionSchema } from "./types.js";
 
 /**
  * Schema for documentation collection

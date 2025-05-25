@@ -1,7 +1,11 @@
 import path from "path";
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-import { createEmbedding, getEmbeddingDimension } from "../services/embeddings.js";
+import {
+  createEmbedding,
+  getEmbeddingDimension,
+} from "../services/embeddings.js";
+import { logger } from "../services/logger.js";
 import {
   collectionExists,
   createCollection,
@@ -38,7 +42,7 @@ class IndexDirTool {
   private createChunks(
     content: string,
     chunkSize: number = 512,
-    overlapSize: number = 50
+    overlapSize: number = 50,
   ): string[] {
     const chunks: string[] = [];
     let position = 0;
@@ -68,7 +72,7 @@ class IndexDirTool {
     filePath: string,
     collectionName: string,
     chunkSize: number,
-    chunkOverlap: number
+    chunkOverlap: number,
   ): Promise<any> {
     try {
       // Read file content
@@ -82,7 +86,23 @@ class IndexDirTool {
         };
       }
 
-      const { content, metadata: fileMetadata } = readResult.data!;
+      if (!readResult.data || !readResult.data.content) {
+        logger.warn("File content is empty or not found");
+        readResult.data = {
+          content: "File content is empty or not found",
+          metadata: {
+            size: 0,
+            created: new Date(),
+            modified: new Date(),
+            accessed: new Date(),
+            extension: path.extname(filePath),
+            filename: path.basename(filePath),
+            directory: path.dirname(filePath),
+          },
+        };
+      }
+
+      const { content, metadata: fileMetadata } = readResult.data;
 
       // Create chunks
       const chunks = this.createChunks(content, chunkSize, chunkOverlap);
@@ -99,7 +119,7 @@ class IndexDirTool {
         };
       }
 
-      /*console.log(
+      /*logger.info(
         chalk.gray(
           `Processing: ${path.basename(filePath)} (${chunks.length} chunks)`
         )
@@ -140,6 +160,11 @@ class IndexDirTool {
           successCount++;
         } catch (error) {
           errorCount++;
+          logger.warn(
+            chalk.yellow(
+              `Warning: Error generating embedding for chunk ${i} in ${filePath}: ${(error as Error).message}`,
+            ),
+          );
         }
       }
 
@@ -174,7 +199,7 @@ class IndexDirTool {
     includeHidden: boolean = false,
     chunkSize: number = 512,
     chunkOverlap: number = 50,
-    collectionName: string = "codebase"
+    collectionName: string = "codebase",
   ): Promise<IndexDirectoryResult> {
     try {
       const absolutePath = filesystem.resolvePath(dirPath);
@@ -196,9 +221,13 @@ class IndexDirTool {
         throw new Error(readResult.message);
       }
 
+      if (!readResult.data || !Array.isArray(readResult.data.entries)) {
+        throw new Error("Invalid directory listing result");
+      }
+
       // Filter to only include files (not directories)
-      const files = readResult
-        .data!.entries.filter((entry) => entry.type === "file")
+      const files = readResult.data.entries
+        .filter((entry) => entry.type === "file")
         .map((entry) => path.join(absolutePath, entry.path));
 
       if (files.length === 0) {
@@ -219,18 +248,18 @@ class IndexDirTool {
         };
       }
 
-      /*console.log(
+      /*logger.info(
         chalk.blue(`Found ${files.length} files to process in ${absolutePath}`)
       );*/
 
       // Get embedding dimension from configuration
       const embeddingDimension = getEmbeddingDimension();
-      
+
       // Ensure collection exists
       if (!(await collectionExists(collectionName))) {
         const created = await createCollection(
           collectionName,
-          embeddingDimension
+          embeddingDimension,
         );
         if (!created) {
           throw new Error(`Failed to create collection ${collectionName}`);
@@ -248,7 +277,7 @@ class IndexDirTool {
           filePath,
           collectionName,
           chunkSize,
-          chunkOverlap
+          chunkOverlap,
         );
 
         fileResults.push(result);
@@ -279,7 +308,10 @@ class IndexDirTool {
         message: `Directory indexed successfully: ${files.length} files with ${totalChunks} chunks and ${totalEmbeddingsGenerated} embeddings`,
       };
     } catch (error) {
-      console.error(chalk.red(`Error indexing directory ${dirPath}:`), error);
+      logger.error(
+        chalk.red(`Error indexing directory ${dirPath}:`),
+        error as Error,
+      );
       throw new Error(`Failed to index directory: ${(error as Error).message}`);
     }
   }
@@ -304,7 +336,7 @@ class IndexDirTool {
       }
 
       // Log formatted information
-      console.error(`
+      logger.info(`
 ${chalk.blue("🔍 Indexing Directory:")} ${dirPath}
 ${chalk.gray("├─")} Recursive: ${recursive ? chalk.green("✓") : chalk.red("✗")}
 ${chalk.gray("├─")} Include Hidden: ${
@@ -328,7 +360,7 @@ ${chalk.gray("└─")} Extensions: ${
         includeHidden,
         chunkSize,
         chunkOverlap,
-        collectionName
+        collectionName,
       )
         .then((result) => ({
           content: [
@@ -348,7 +380,7 @@ ${chalk.gray("└─")} Extensions: ${
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -365,7 +397,7 @@ ${chalk.gray("└─")} Extensions: ${
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

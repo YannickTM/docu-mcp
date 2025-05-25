@@ -1,10 +1,10 @@
 import "dotenv/config";
 import * as lancedb from "@lancedb/lancedb";
-import { Connection } from "@lancedb/lancedb";
+import type { Connection } from "@lancedb/lancedb";
 import path from "path";
 import fs from "fs";
 import { getCollectionSchema } from "../schemas/index.js";
-
+import { logger } from "../logger.js";
 /**
  * Interface for vector points to be stored in LanceDB
  */
@@ -26,15 +26,38 @@ if (!fs.existsSync(LANCE_PATH)) {
 
 // Initialize connection
 let dbConnection: Connection | null = null;
+let connectionTimeout: NodeJS.Timeout | null = null;
 
-/**
- * Get a connection to LanceDB
- */
 const getConnection = async (): Promise<Connection> => {
   if (!dbConnection) {
     dbConnection = await lancedb.connect(LANCE_PATH);
   }
+
+  // Reset timeout
+  if (connectionTimeout) {
+    clearTimeout(connectionTimeout);
+  }
+
+  // Auto-close connection after 5 minutes of inactivity
+  connectionTimeout = setTimeout(() => {
+    if (dbConnection) {
+      // Note: Add close method when available in LanceDB API
+      dbConnection = null;
+    }
+  }, 300000);
+
   return dbConnection;
+};
+
+// Add cleanup function
+export const cleanup = async (): Promise<void> => {
+  if (connectionTimeout) {
+    clearTimeout(connectionTimeout);
+  }
+  if (dbConnection) {
+    // Close connection when API supports it
+    dbConnection = null;
+  }
 };
 
 /**
@@ -45,7 +68,7 @@ export const healthCheck = async (): Promise<boolean> => {
     await getConnection();
     return true;
   } catch (error) {
-    console.error("LanceDB health check failed:", error);
+    logger.error("LanceDB health check failed:", error as Error);
     throw error;
   }
 };
@@ -54,7 +77,7 @@ export const healthCheck = async (): Promise<boolean> => {
  * Delete a collection from LanceDB
  */
 export const deleteCollection = async (
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> => {
   try {
     const db = await getConnection();
@@ -64,13 +87,16 @@ export const deleteCollection = async (
       // LanceDB doesn't have a direct dropTable method exposed in the TS types
       // We use the native method from the connection
       await db.dropTable(collectionName);
-      console.warn(`Deleted LanceDB collection '${collectionName}'`);
+      logger.warn(`Deleted LanceDB collection '${collectionName}'`);
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error(`Error deleting collection ${collectionName}:`, error);
+    logger.error(
+      `Error deleting collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -79,15 +105,11 @@ export const deleteCollection = async (
  * Check if a collection exists
  */
 export const collectionExists = async (
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> => {
-  try {
-    const db = await getConnection();
-    const tables = await db.tableNames();
-    return tables.includes(collectionName);
-  } catch (error) {
-    throw error;
-  }
+  const db = await getConnection();
+  const tables = await db.tableNames();
+  return tables.includes(collectionName);
 };
 
 /**
@@ -96,7 +118,7 @@ export const collectionExists = async (
 export const createCollection = async (
   collectionName: string,
   vectorSize: number,
-  distance: "cosine" | "l2" | "dot" = "cosine"
+  distance: "cosine" | "l2" | "dot" = "cosine",
 ): Promise<boolean> => {
   try {
     const db = await getConnection();
@@ -107,7 +129,7 @@ export const createCollection = async (
     }
 
     // Get schema for this collection or use default generic schema
-    let schema = getCollectionSchema(collectionName);
+    const schema = getCollectionSchema(collectionName);
 
     // Create a sample vector of appropriate size
     const sampleVector = new Array(vectorSize).fill(0);
@@ -136,19 +158,22 @@ export const createCollection = async (
       };
 
       await table.createIndex("vector", indexOptions);
-      console.warn(`Created vector index for collection '${collectionName}'`);
+      logger.warn(`Created vector index for collection '${collectionName}'`);
     } catch (error) {
-      console.error("Failed to create vector index:", error);
+      logger.error("Failed to create vector index:", error as Error);
       // Continue without index - searches will be slower but still work
     }
 
-    console.warn(
-      `Created LanceDB collection '${collectionName}' with schema for ${vectorSize}-dimensional vectors`
+    logger.warn(
+      `Created LanceDB collection '${collectionName}' with schema for ${vectorSize}-dimensional vectors`,
     );
 
     return true;
   } catch (error) {
-    console.error(`Error creating collection ${collectionName}:`, error);
+    logger.error(
+      `Error creating collection ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -158,7 +183,7 @@ export const createCollection = async (
  */
 export const upsertPoints = async (
   collectionName: string,
-  points: VectorPoint[]
+  points: VectorPoint[],
 ): Promise<boolean> => {
   try {
     const db = await getConnection();
@@ -200,13 +225,16 @@ export const upsertPoints = async (
 
     // Add data to the table
     await table.add(records);
-    console.warn(
-      `Added ${points.length} points to LanceDB collection '${collectionName}'`
+    logger.warn(
+      `Added ${points.length} points to LanceDB collection '${collectionName}'`,
     );
 
     return true;
   } catch (error) {
-    console.error(`Error upserting points to ${collectionName}:`, error);
+    logger.error(
+      `Error upserting points to ${collectionName}:`,
+      error as Error,
+    );
     throw error;
   }
 };
@@ -219,37 +247,34 @@ export const search = async (
   vector: number[],
   limit: number = 10,
   filter?: Record<string, any>,
-  distance: "cosine" | "l2" | "dot" = "cosine"
+  distance: "cosine" | "l2" | "dot" = "cosine",
 ): Promise<any[]> => {
   try {
     const db = await getConnection();
 
     if (!(await collectionExists(collectionName))) {
-      console.warn(
-        `Collection ${collectionName} does not exist for search operation`
+      logger.warn(
+        `Collection ${collectionName} does not exist for search operation`,
       );
       return [];
     }
 
     const table = await db.openTable(collectionName);
 
-    // Get schema for this collection to check vector dimensions
-    const schema = getCollectionSchema(collectionName);
-
     // Try to get the actual vector dimension from the table schema
     let tableSchema;
     try {
       tableSchema = await table.schema();
       const vectorColumn = tableSchema.fields.find(
-        (f: any) => f.name === "vector"
+        (f: any) => f.name === "vector",
       );
 
       // Found actual vector dimension in the table
       const actualVectorSize = vectorColumn?.type.listSize;
 
       if (vector.length !== actualVectorSize) {
-        console.warn(
-          `Vector dimension mismatch: provided ${vector.length}, expected ${actualVectorSize} (from table schema)`
+        logger.warn(
+          `Vector dimension mismatch: provided ${vector.length}, expected ${actualVectorSize} (from table schema)`,
         );
 
         // Resize vector to match the table's dimension
@@ -261,23 +286,23 @@ export const search = async (
         } else if (vector.length < actualVectorSize) {
           // Pad with zeros if too small
           resizedVector.push(
-            ...new Array(actualVectorSize - vector.length).fill(0)
+            ...new Array(actualVectorSize - vector.length).fill(0),
           );
         }
 
         vector = resizedVector;
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         "Could not retrieve table schema, using predefined schema:",
-        error
+        error,
       );
     }
 
     try {
       // Log actual vector length for debugging
-      console.warn(
-        `Using vector of length ${vector.length} for search in collection '${collectionName}'`
+      logger.warn(
+        `Using vector of length ${vector.length} for search in collection '${collectionName}'`,
       );
 
       // Start with a query builder
@@ -303,7 +328,7 @@ export const search = async (
             // Handle text match type
             else if (condition.match.text) {
               query = query.where(
-                `${condition.key} = '${condition.match.text}'`
+                `${condition.key} = '${condition.match.text}'`,
               );
             }
           }
@@ -322,12 +347,15 @@ export const search = async (
         payload: item,
       }));
     } catch (error) {
-      console.error("Vector search failed:", error);
+      logger.error("Vector search failed:", error as Error);
       // Return empty results instead of throwing
       return [];
     }
   } catch (error) {
-    console.error(`Error searching in collection ${collectionName}:`, error);
+    logger.error(
+      `Error searching in collection ${collectionName}:`,
+      error as Error,
+    );
     return [];
   }
 };
@@ -338,7 +366,7 @@ export const search = async (
 export function createPoint(
   id: string | number,
   vector: number[],
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
 ): VectorPoint {
   return {
     id,

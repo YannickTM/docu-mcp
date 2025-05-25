@@ -2,6 +2,7 @@
 import chalk from "chalk";
 import path from "path";
 import * as filesystem from "../services/filesystem.js";
+import { logger } from "../services/logger.js";
 
 class DocumentationGenerator {
   thoughtHistory: any[] = [];
@@ -26,7 +27,7 @@ class DocumentationGenerator {
     }
     if (typeof data.readyToIndexTheDocumentation !== "boolean") {
       throw new Error(
-        "Invalid readyToIndexTheDocumentation: must be a boolean"
+        "Invalid readyToIndexTheDocumentation: must be a boolean",
       );
     }
     if (data.documentation && typeof data.documentation !== "string") {
@@ -34,7 +35,7 @@ class DocumentationGenerator {
     }
     if (data.readyToIndexTheDocumentation && !data.documentation) {
       throw new Error(
-        "readyToIndexTheDocumentation is true but documentation is missing"
+        "readyToIndexTheDocumentation is true but documentation is missing",
       );
     }
 
@@ -57,27 +58,45 @@ class DocumentationGenerator {
           throw new Error(readResult.message);
         }
 
-        fileContent = readResult.data!.content;
-        console.error(chalk.green(`Loaded file content from: ${filePath}`));
+        if (!readResult.data || !readResult.data.content) {
+          logger.warn(
+            chalk.yellow(`File content is empty or not found at: ${filePath}`),
+          );
+          readResult.data = {
+            content: "File content is empty or not found",
+            metadata: {
+              size: 0,
+              created: new Date(),
+              modified: new Date(),
+              accessed: new Date(),
+              extension: path.extname(filePath),
+              filename: path.basename(filePath),
+              directory: path.dirname(filePath),
+            },
+          };
+        }
+
+        fileContent = readResult.data.content;
+        logger.info(chalk.green(`Loaded file content from: ${filePath}`));
       } else {
         // If it doesn't exist, assume it's already code content
-        console.error(
+        logger.error(
           chalk.yellow(
             `Assuming input is code content and not a file path: ${data.file.substring(
               0,
-              50
-            )}...`
-          )
+              50,
+            )}...`,
+          ),
         );
       }
     } catch (error) {
       // If there's an error, assume it's already code content
-      console.error(
+      logger.error(
         chalk.yellow(
           `Error checking file path, assuming it's code: ${
             error instanceof Error ? error.message : String(error)
-          }`
-        )
+          }`,
+        ),
       );
     }
 
@@ -100,14 +119,35 @@ class DocumentationGenerator {
               if (fileExists) {
                 const readResult = await filesystem.readFile(
                   resolvedPath,
-                  "utf-8"
+                  "utf-8",
                 );
                 if (!readResult.success) {
                   return `Failed to read ${filePath}: ${readResult.message}`;
                 }
+
+                if (!readResult.data || !readResult.data.content) {
+                  logger.warn(
+                    chalk.yellow(
+                      `File content is empty or not found at: ${filePath}`,
+                    ),
+                  );
+                  readResult.data = {
+                    content: "File content is empty or not found",
+                    metadata: {
+                      size: 0,
+                      created: new Date(),
+                      modified: new Date(),
+                      accessed: new Date(),
+                      extension: path.extname(filePath),
+                      filename: path.basename(filePath),
+                      directory: path.dirname(filePath),
+                    },
+                  };
+                }
+
                 return {
                   path: filePath,
-                  content: readResult.data!.content,
+                  content: readResult.data.content,
                 };
               } else {
                 return {
@@ -123,25 +163,25 @@ class DocumentationGenerator {
                 }`,
               };
             }
-          })
+          }),
         );
         additionalFileContent = additionalContents;
-        console.warn(
-          chalk.green(`Loaded ${additionalContents.length} additional files`)
+        logger.warn(
+          chalk.green(`Loaded ${additionalContents.length} additional files`),
         );
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error processing additional files: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
 
     // Handle semantic search
-    let searchResults = data.seamticSearch || undefined;
+    let searchResults = data.semanticSearch || undefined;
     if (data.semanticSearch) {
       try {
         // Import required search services
@@ -152,20 +192,20 @@ class DocumentationGenerator {
 
         const { collection, query, filter } = data.semanticSearch;
         if (!collection || !query) {
-          console.error(
-            chalk.red("Invalid semanticSearch: missing collection or query")
+          logger.error(
+            chalk.red("Invalid semanticSearch: missing collection or query"),
           );
         } else {
           // Verify that the collection exists
           if (!(await collectionExists(collection))) {
-            console.error(chalk.red(`Collection ${collection} does not exist`));
+            logger.error(chalk.red(`Collection ${collection} does not exist`));
           } else {
-            console.warn(
-              chalk.blue(`Searching ${collection} collection for: "${query}"`)
+            logger.warn(
+              chalk.blue(`Searching ${collection} collection for: "${query}"`),
             );
 
             // Build filter if provided
-            let filterQuery = undefined;
+            let filterQuery = {};
             if (filter) {
               const conditions = [];
 
@@ -193,9 +233,9 @@ class DocumentationGenerator {
 
               if (conditions.length > 0) {
                 filterQuery = { must: conditions };
-                console.warn(
+                logger.warn(
                   `With filters:`,
-                  JSON.stringify(filterQuery, null, 2)
+                  JSON.stringify(filterQuery, null, 2),
                 );
               }
             }
@@ -203,10 +243,10 @@ class DocumentationGenerator {
             // Generate embedding for the query
             const embeddingResult = await createEmbedding(query);
             if (embeddingResult.error) {
-              console.error(
+              logger.error(
                 chalk.red(
-                  `Error generating embedding: ${embeddingResult.error}`
-                )
+                  `Error generating embedding: ${embeddingResult.error}`,
+                ),
               );
             } else {
               // Perform the search
@@ -215,84 +255,89 @@ class DocumentationGenerator {
                 collection,
                 embeddingResult.embedding,
                 limit,
-                filterQuery
+                filterQuery,
               );
 
               // Process the results based on the collection type
-              searchResults = searchResult.map(({ score, payload }) => ({
-                content: payload.content || "",
-                similarity: parseFloat(score.toFixed(4)),
-                filePath: payload.filePath || "",
-                filename: payload.filename || "",
-                location: `${payload.filePath}${
-                  payload.startPosition ? `:${payload.startPosition}` : ""
-                }`,
-                // Include collection-specific metadata
-                ...(collection === "documentation" && {
-                  title: payload.title,
-                  docType: payload.docType,
-                  section: payload.section,
-                  tags: payload.tags,
+              const processedResults = searchResult.map(
+                ({ score, payload }) => ({
+                  content: payload.content || "",
+                  similarity: parseFloat(score.toFixed(4)),
+                  filePath: payload.filePath || "",
+                  filename: payload.filename || "",
+                  location: `${payload.filePath}${
+                    payload.startPosition ? `:${payload.startPosition}` : ""
+                  }`,
+                  // Include collection-specific metadata
+                  ...(collection === "documentation" && {
+                    title: payload.title,
+                    docType: payload.docType,
+                    section: payload.section,
+                    tags: payload.tags,
+                  }),
+                  ...(collection === "diagrams" && {
+                    title: payload.title,
+                    diagramType: payload.diagramType,
+                    description: payload.description,
+                  }),
                 }),
-                ...(collection === "diagrams" && {
-                  title: payload.title,
-                  diagramType: payload.diagramType,
-                  description: payload.description,
-                }),
-              }));
+              );
+              searchResults = {
+                collection: collection, // assuming 'collection' variable exists
+                query: query,
+                filter: filterQuery,
+                results: processedResults, // add the actual results
+              };
 
-              console.warn(
+              logger.warn(
                 chalk.green(
-                  `Found ${searchResults.length} results in ${collection} collection`
-                )
+                  `Found ${searchResult.length} results in ${collection} collection`,
+                ),
               );
             }
           }
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error performing semantic search: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
 
     if (data.readyToIndexTheDocumentation && data.file && data.documentation) {
       // Import required services
-      const { createEmbedding, getEmbeddingDimension } = await import("../services/embeddings.js");
-      const { upsertPoints, createPoint, collectionExists, createCollection } = await import(
-        "../services/vectordb.js"
+      const { createEmbedding, getEmbeddingDimension } = await import(
+        "../services/embeddings.js"
       );
+      const { upsertPoints, createPoint, collectionExists, createCollection } =
+        await import("../services/vectordb.js");
 
       try {
         // Get embedding dimension from configuration
         const embeddingDimension = getEmbeddingDimension();
-        
+
         // Ensure collection exists
         if (!(await collectionExists("documentation"))) {
           const created = await createCollection(
             "documentation",
-            embeddingDimension
+            embeddingDimension,
           );
           if (!created) {
-            throw new Error(
-              `Failed to create collection documentation`
-            );
+            throw new Error(`Failed to create collection documentation`);
           }
-          console.error(
-            chalk.green(`Created documentation collection`)
-          );
+          logger.info(chalk.green(`Created documentation collection`));
         }
 
         // Generate embedding for the documentation content
         const result = await createEmbedding(data.documentation);
 
         if (result.error) {
-          console.error(
-            chalk.red(`Error generating embedding: ${result.error}`)
+          logger.error(
+            chalk.red(`Error generating embedding: ${result.error}`),
           );
           throw new Error(`Failed to generate embedding: ${result.error}`);
         }
@@ -310,30 +355,30 @@ class DocumentationGenerator {
         const point = createPoint(
           `diagram_${Date.now()}_${Math.floor(Math.random() * 1000)}`, // Generate a unique ID
           result.embedding,
-          metadata
+          metadata,
         );
 
         // Add to the documentation collection
         const success = await upsertPoints("documentation", [point]);
 
         if (success) {
-          console.error(
+          logger.error(
             chalk.green(
-              `Documentation indexed successfully for file: ${data.file}`
-            )
+              `Documentation indexed successfully for file: ${data.file}`,
+            ),
           );
         } else {
-          console.error(
-            chalk.red(`Failed to index documentation for file: ${data.file}`)
+          logger.error(
+            chalk.red(`Failed to index documentation for file: ${data.file}`),
           );
         }
       } catch (error) {
-        console.error(
+        logger.error(
           chalk.red(
             `Error indexing documentation: ${
               error instanceof Error ? error.message : String(error)
-            }`
-          )
+            }`,
+          ),
         );
       }
     }
@@ -389,8 +434,8 @@ class DocumentationGenerator {
         header.length,
         thought.length,
         file.length,
-        (documentation ?? "").length
-      ) + 4
+        (documentation ?? "").length,
+      ) + 4,
     );
     // Ensure file and documentation aren't too long for display by truncating them
     const maxDisplayLength = border.length - 2;
@@ -438,7 +483,7 @@ class DocumentationGenerator {
         this.branches[validatedInput.branchId].push(validatedInput);
       }
       const formattedThought = this.formatThought(validatedInput);
-      console.error(formattedThought);
+      logger.info(formattedThought);
       return {
         content: [
           {
@@ -457,7 +502,7 @@ class DocumentationGenerator {
                 thoughtHistoryLength: this.thoughtHistory.length,
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -473,7 +518,7 @@ class DocumentationGenerator {
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -585,13 +630,13 @@ You should:
         type: "boolean",
         description: "If semantic search is needed",
       },
-      seamticSearch: {
+      semanticSearch: {
         type: "object",
         properties: {
           collection: {
             type: "string",
             description: "The collection to search in",
-            enum: ["codebase", "documentation", "diagram"],
+            enum: ["codebase", "documentation", "diagrams"],
           },
           filter: {
             type: "object",

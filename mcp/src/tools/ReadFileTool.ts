@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import * as filesystem from "../services/filesystem.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Tool for reading file content from the filesystem
  * Handles both absolute and relative paths with encoding options
@@ -12,7 +12,7 @@ class ReadFileTool {
   async readFile(
     filePath: string,
     encoding: BufferEncoding = "utf-8",
-    includeMetadata: boolean = true
+    includeMetadata: boolean = true,
   ) {
     // Read file content using simplified filesystem functions
     const result = await filesystem.readFile(filePath, encoding);
@@ -21,24 +21,28 @@ class ReadFileTool {
       throw new Error(result.message);
     }
 
+    if (!result.data || !result.data.content) {
+      throw new Error("File content is empty or not found");
+    }
+
     // Create response object
     const responseObj: any = {
-      content: result.data!.content,
+      content: result.data.content,
       path: filesystem.resolvePath(filePath),
-      size: Buffer.byteLength(result.data!.content, encoding),
+      size: Buffer.byteLength(result.data.content, encoding),
       encoding,
     };
 
     // Add metadata if requested
-    if (includeMetadata && result.data!.metadata) {
+    if (includeMetadata && result.data.metadata) {
       responseObj.metadata = {
-        size: result.data!.metadata.size,
-        created: result.data!.metadata.created,
-        modified: result.data!.metadata.modified,
-        accessed: result.data!.metadata.accessed,
-        extension: result.data!.metadata.extension,
-        filename: result.data!.metadata.filename,
-        directory: result.data!.metadata.directory,
+        size: result.data.metadata.size,
+        created: result.data.metadata.created,
+        modified: result.data.metadata.modified,
+        accessed: result.data.metadata.accessed,
+        extension: result.data.metadata.extension,
+        filename: result.data.metadata.filename,
+        directory: result.data.metadata.directory,
       };
     }
 
@@ -63,10 +67,10 @@ class ReadFileTool {
       ];
 
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -77,7 +81,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
       return this.readFile(
         filePath,
         encoding as BufferEncoding,
-        includeMetadata
+        includeMetadata,
       )
         .then((result) => {
           // Create a result object that only includes the content and metadata, not the full file
@@ -114,7 +118,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                     status: "failed",
                   },
                   null,
-                  2
+                  2,
                 ),
               },
             ],
@@ -132,7 +136,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

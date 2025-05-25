@@ -20,7 +20,7 @@ All vector database implementations are abstracted behind a common interface, al
 
 DocuMCP implements a unified vector database abstraction layer:
 
-``` mermaid
+```mermaid
 flowchart TD
     A[MCP Tools] -->|IndexFileTool| B[Vector Service]
     A -->|IndexDirTool| B
@@ -41,6 +41,7 @@ flowchart TD
 ```
 
 This design enables:
+
 - Consistent API across all vector database implementations
 - Ability to change databases without modifying tools
 - Automatic distance metric conversions between backends
@@ -51,12 +52,14 @@ This design enables:
 The vector database integration includes:
 
 1. **Core Abstraction Layer** (`/mcp/src/services/vectordb.ts`):
+
    - Unified interface for all vector database operations
    - Type definitions for vector points and configuration
    - Automatic provider selection based on environment variables
    - Distance metric conversion between different backend formats
 
 2. **Provider Implementations**:
+
    - **ChromaDB** (`/mcp/src/services/endpoints/db-chroma.ts`): Client for ChromaDB with filter conversion
    - **LanceDB** (`/mcp/src/services/endpoints/db-lance.ts`): Robust LanceDB implementation with advanced schema handling
    - **Qdrant** (`/mcp/src/services/endpoints/db-qdrant.ts`): Production-ready Qdrant client with API key support
@@ -73,7 +76,7 @@ The vector database integration includes:
 ```typescript
 // Create a collection
 await createCollection(
-  "documentation",  // collection name 
+  "documentation",  // collection name
   384,              // vector size (dimensions)
   "cosine"          // distance metric (cosine, l2/euclid, dot/ip)
 );
@@ -112,7 +115,7 @@ const results = await search(
 DocuMCP standardizes distance metrics across all vector database backends:
 
 | Normalized | ChromaDB | LanceDB | Qdrant |
-|------------|----------|---------|--------|
+| ---------- | -------- | ------- | ------ |
 | cosine     | cosine   | cosine  | Cosine |
 | l2/euclid  | l2       | l2      | Euclid |
 | dot/ip     | ip       | dot     | Dot    |
@@ -169,6 +172,7 @@ Code/Docs → Chunking → Embedding → Storage in Vector DB
 ```
 
 This process runs during the following operations:
+
 - When using `index_file` or `index_directory` tools
 - When storing generated documentation
 - When storing generated diagrams
@@ -180,6 +184,7 @@ Query → Embedding → Similarity Search in Vector DB → Top K Results
 ```
 
 This process runs when:
+
 - Searching for code with `search_codebase` tool
 - Searching for documentation with `search_documentation` tool
 - Searching for diagrams with `search_diagrams` tool
@@ -191,6 +196,7 @@ Query → Embedding → Similarity Search → Context Preparation → LLM Genera
 ```
 
 This process runs during:
+
 - Documentation generation with `generate_documentation` tool
 - Diagram generation with `generate_diagram` tool
 - Code explanation with `explain_code` tool
@@ -199,17 +205,18 @@ This process runs during:
 
 The vector database can be configured through environment variables:
 
-| Variable | Description | Default | Options |
-|----------|-------------|---------|---------|
-| `VECTOR_DB_PROVIDER` | Vector database provider | `lance` | `chroma`, `lance`, `qdrant` |
-| `CHROMA_URL` | ChromaDB server URL | `http://localhost:8000` | Any valid URL |
-| `LANCE_PATH` | LanceDB storage directory | `$HOME/lancedb_data` | Any valid directory path |
-| `QDRANT_URL` | Qdrant server URL | `http://localhost:6333` | Any valid URL |
-| `QDRANT_API_KEY` | Qdrant API key (optional) | - | Any valid API key |
+| Variable             | Description               | Default                 | Options                     |
+| -------------------- | ------------------------- | ----------------------- | --------------------------- |
+| `VECTOR_DB_PROVIDER` | Vector database provider  | `lance`                 | `chroma`, `lance`, `qdrant` |
+| `CHROMA_URL`         | ChromaDB server URL       | `http://localhost:8000` | Any valid URL               |
+| `LANCE_PATH`         | LanceDB storage directory | `$HOME/lancedb_data`    | Any valid directory path    |
+| `QDRANT_URL`         | Qdrant server URL         | `http://localhost:6333` | Any valid URL               |
+| `QDRANT_API_KEY`     | Qdrant API key (optional) | -                       | Any valid API key           |
 
 ### Example Configuration
 
 #### .env File
+
 ```
 VECTOR_DB_PROVIDER=lance
 LANCE_PATH=/Users/username/Projects/DocuMCP/data/lancedb
@@ -218,19 +225,23 @@ LANCE_PATH=/Users/username/Projects/DocuMCP/data/lancedb
 ## Best Practices
 
 1. **Choose the right backend for your use case**:
+
    - **ChromaDB**: For development and testing
    - **LanceDB**: For local deployment with no external dependencies
    - **Qdrant**: For production deployments or cloud hosting
 
 2. **Use consistent vector dimensions**:
+
    - Ensure all embeddings for a collection have the same dimensions
    - Typical dimensions: 384 (MiniLM), 768 (BERT), 1536 (OpenAI)
 
 3. **Add meaningful metadata**:
+
    - Include file paths, code types, and other attributes for filtering
    - Store content alongside embeddings for retrieval
 
 4. **Use appropriate distance metrics**:
+
    - **cosine**: Best for text embeddings (default)
    - **l2/euclid**: Best for image or spatial embeddings
    - **dot/ip**: Best when magnitude matters

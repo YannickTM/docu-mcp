@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { createEmbedding } from "../services/embeddings.js";
 import { collectionExists, search } from "../services/vectordb.js";
-
+import { logger } from "../services/logger.js";
 /**
  * Interface for search result
  */
@@ -69,13 +69,13 @@ class SearchCodebaseTool {
     query: string,
     limit: number = 10,
     filter?: SearchFilter,
-    collectionName: string = "codebase"
+    collectionName: string = "codebase",
   ): Promise<SearchResult[]> {
     try {
       // Check if collection exists
       if (!(await collectionExists(collectionName))) {
         throw new Error(
-          `Collection ${collectionName} does not exist. Please index some files first.`
+          `Collection ${collectionName} does not exist. Please index some files first.`,
         );
       }
 
@@ -83,7 +83,7 @@ class SearchCodebaseTool {
       const embeddingResult = await createEmbedding(query);
       if (embeddingResult.error) {
         throw new Error(
-          `Failed to generate embedding for query: ${embeddingResult.error}`
+          `Failed to generate embedding for query: ${embeddingResult.error}`,
         );
       }
 
@@ -91,11 +91,11 @@ class SearchCodebaseTool {
       const filterQuery = this.buildFilter(filter);
 
       // Log search info
-      console.warn(
-        chalk.blue(`Searching collection ${collectionName} for: "${query}"`)
+      logger.warn(
+        chalk.blue(`Searching collection ${collectionName} for: "${query}"`),
       );
       if (filterQuery) {
-        console.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
+        logger.warn(`With filters:`, JSON.stringify(filterQuery, null, 2));
       }
 
       // Search in VectorDB
@@ -103,7 +103,7 @@ class SearchCodebaseTool {
         collectionName,
         embeddingResult.embedding,
         limit,
-        filterQuery
+        filterQuery,
       );
 
       // Map results to SearchResult interface
@@ -118,7 +118,7 @@ class SearchCodebaseTool {
         }`,
       }));
     } catch (error) {
-      console.error(chalk.red(`Error searching codebase:`), error);
+      logger.error(chalk.red(`Error searching codebase:`), error as Error);
       throw new Error(`Failed to search codebase: ${(error as Error).message}`);
     }
   }
@@ -158,7 +158,7 @@ class SearchCodebaseTool {
 
       if (filter.extension) {
         options.push(
-          `Extensions: ${chalk.yellow(filter.extension.join(", "))}`
+          `Extensions: ${chalk.yellow(filter.extension.join(", "))}`,
         );
       }
       if (filter.directory) {
@@ -170,10 +170,10 @@ class SearchCodebaseTool {
 
       const header = chalk.blue(`🔍 Searching Codebase`);
       const border = "─".repeat(
-        Math.max(header.length, ...options.map((o) => o.length)) + 4
+        Math.max(header.length, ...options.map((o) => o.length)) + 4,
       );
 
-      console.warn(`
+      logger.warn(`
 ┌${border}┐
 │ ${header.padEnd(border.length - 2)} │
 ├${border}┤
@@ -185,7 +185,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
         query,
         limit,
         Object.keys(filter).length > 0 ? filter : undefined,
-        collectionName
+        collectionName,
       )
         .then((results) => ({
           content: [
@@ -205,7 +205,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   })),
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -220,7 +220,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                   status: "failed",
                 },
                 null,
-                2
+                2,
               ),
             },
           ],
@@ -237,7 +237,7 @@ ${options.map((opt) => `│ ${opt.padEnd(border.length - 2)} │`).join("\n")}
                 status: "failed",
               },
               null,
-              2
+              2,
             ),
           },
         ],

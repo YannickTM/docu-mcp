@@ -56,7 +56,7 @@ export async function healthCheck(): Promise<boolean> {
  * Check if a collection exists in the vector database
  */
 export async function collectionExists(
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> {
   const config = loadVectorDBConfig();
 
@@ -73,7 +73,7 @@ export async function collectionExists(
  * Delete a collection from the vector database
  */
 export async function deleteCollection(
-  collectionName: string
+  collectionName: string,
 ): Promise<boolean> {
   const config = loadVectorDBConfig();
 
@@ -96,7 +96,7 @@ export async function deleteCollection(
  */
 function convertDistanceMetric(
   distance: string,
-  targetProvider: VectorDBProvider
+  targetProvider: VectorDBProvider,
 ): string {
   // Normalize input to lowercase for consistent matching
   const normalizedDistance = distance.toLowerCase();
@@ -132,7 +132,7 @@ function convertDistanceMetric(
 export async function createCollection(
   collectionName: string,
   vectorSize: number,
-  distance: string = "cosine"
+  distance: string = "cosine",
 ): Promise<boolean> {
   const config = loadVectorDBConfig();
 
@@ -150,7 +150,7 @@ export async function createCollection(
     return ChromaDB.createCollection(
       collectionName,
       vectorSize,
-      chromaDistance
+      chromaDistance,
     );
   } else {
     const qdrantDistance = convertDistanceMetric(distance, "qdrant") as
@@ -160,7 +160,7 @@ export async function createCollection(
     return QdrantDB.createCollection(
       collectionName,
       vectorSize,
-      qdrantDistance
+      qdrantDistance,
     );
   }
 }
@@ -170,26 +170,26 @@ export async function createCollection(
  */
 export async function upsertPoints(
   collectionName: string,
-  points: VectorPoint[]
+  points: VectorPoint[],
 ): Promise<boolean> {
   const config = loadVectorDBConfig();
 
   if (config.provider === "lance") {
     // Convert points to LanceDB format if needed
     const lancePoints = points.map((point) =>
-      LanceDB.createPoint(point.id, point.vector, point.payload)
+      LanceDB.createPoint(point.id, point.vector, point.payload),
     );
     return LanceDB.upsertPoints(collectionName, lancePoints);
   } else if (config.provider === "chroma") {
     // Convert points to ChromaDB format if needed
     const chromaPoints = points.map((point) =>
-      ChromaDB.createPoint(point.id, point.vector, point.payload)
+      ChromaDB.createPoint(point.id, point.vector, point.payload),
     );
     return ChromaDB.upsertPoints(collectionName, chromaPoints);
   } else {
     // Convert points to QdrantDB format if needed
     const qdrantPoints = points.map((point) =>
-      QdrantDB.createPoint(point.id, point.vector, point.payload)
+      QdrantDB.createPoint(point.id, point.vector, point.payload),
     );
     return QdrantDB.upsertPoints(collectionName, qdrantPoints);
   }
@@ -201,7 +201,7 @@ export async function upsertPoints(
  */
 function convertFilter(
   filter: Record<string, any> | undefined,
-  targetProvider: VectorDBProvider
+  _targetProvider: VectorDBProvider,
 ): Record<string, any> | undefined {
   if (!filter) return undefined;
 
@@ -224,7 +224,7 @@ export async function search(
   vector: number[],
   limit: number = 10,
   filter?: Record<string, any>,
-  distance: string = "cosine"
+  distance: string = "cosine",
 ): Promise<any[]> {
   const config = loadVectorDBConfig();
 
@@ -239,7 +239,7 @@ export async function search(
       vector,
       limit,
       lanceFilter,
-      lanceDistance
+      lanceDistance,
     );
   } else if (config.provider === "chroma") {
     const chromaFilter = convertFilter(filter, "chroma");
@@ -256,7 +256,7 @@ export async function search(
 export function createPoint(
   id: string | number,
   vector: number[],
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
 ): VectorPoint {
   const config = loadVectorDBConfig();
 
