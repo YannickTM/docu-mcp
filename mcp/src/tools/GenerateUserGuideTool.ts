@@ -46,15 +46,15 @@ class UserGuideGenerator {
     if (typeof data.readyToIndexTheUserGuide !== "boolean") {
       throw new Error("Invalid readyToIndexTheUserGuide: must be a boolean");
     }
-    if (data.userGuide && typeof data.userGuide !== "string") {
-      throw new Error("Invalid userGuide: must be a string");
+    if (data.userguide && typeof data.userguide !== "string") {
+      throw new Error("Invalid userguide: must be a string");
     }
     if (data.sections && !Array.isArray(data.sections)) {
       throw new Error("Invalid sections: must be an array");
     }
-    if (data.readyToIndexTheUserGuide && !data.userGuide) {
+    if (data.readyToIndexTheUserGuide && !data.userguide) {
       throw new Error(
-        "readyToIndexTheUserGuide is true but userGuide is missing",
+        "readyToIndexTheUserGuide is true but userguide is missing",
       );
     }
 
@@ -248,7 +248,7 @@ class UserGuideGenerator {
     }
 
     // Index the user guide when ready
-    if (data.readyToIndexTheUserGuide && data.userGuide) {
+    if (data.readyToIndexTheUserGuide && data.userguide) {
       try {
         // Get embedding dimension from configuration
         const embeddingDimension = getEmbeddingDimension();
@@ -266,7 +266,7 @@ class UserGuideGenerator {
         }
 
         // Generate embedding for the user guide content
-        const result = await createEmbedding(data.userGuide);
+        const result = await createEmbedding(data.userguide);
 
         if (result.error) {
           logger.error(
@@ -277,7 +277,7 @@ class UserGuideGenerator {
 
         // Create metadata for the user guide
         const metadata = {
-          content: data.userGuide,
+          content: data.userguide,
           topic: data.topic,
           targetAudience: data.targetAudience,
           type: "user_guide",
@@ -326,7 +326,7 @@ class UserGuideGenerator {
       topic: data.topic,
       targetAudience: data.targetAudience,
       semanticSearchResult: searchResults,
-      userGuide: data.userGuide,
+      userguide: data.userguide,
       sections: data.sections,
       relatedFiles: data.relatedFiles,
       usedDocumentation: data.usedDocumentation || [],
@@ -352,7 +352,7 @@ class UserGuideGenerator {
       topic,
       targetAudience,
       semanticSearchResult,
-      userGuide,
+      userguide,
       thoughtNumber,
       totalThoughts,
       thought,
@@ -382,7 +382,7 @@ class UserGuideGenerator {
         thought.length,
         topic.length,
         targetAudience.length,
-        (userGuide ?? "").length,
+        (userguide ?? "").length,
       ) + 4,
     );
 
@@ -396,10 +396,10 @@ class UserGuideGenerator {
       targetAudience.length > maxDisplayLength
         ? targetAudience.substring(0, maxDisplayLength - 3) + "..."
         : targetAudience.padEnd(maxDisplayLength);
-    const userGuideDisplay = userGuide
-      ? userGuide.length > maxDisplayLength
-        ? userGuide.substring(0, maxDisplayLength - 3) + "..."
-        : userGuide.padEnd(maxDisplayLength)
+    const userGuideDisplay = userguide
+      ? userguide.length > maxDisplayLength
+        ? userguide.substring(0, maxDisplayLength - 3) + "..."
+        : userguide.padEnd(maxDisplayLength)
       : "".padEnd(maxDisplayLength);
     const thoughtDisplay =
       thought.length > maxDisplayLength
@@ -530,7 +530,7 @@ Parameters explained:
 - topic: The main topic for the user guide
 - targetAudience: Who the guide is for (developers, end-users, admins, etc.)
 - semanticSearch: Array of search queries across different collections
-- userGuide: The generated user guide content
+- userguide: The generated user guide content
 - sections: Sections/chapters in the guide
 - relatedFiles: Files referenced in the guide
 - usedDocumentation/Diagrams/etc: Track sources from each collection
@@ -557,6 +557,10 @@ Parameters explained:
           type: "string",
           description: "Sections to be included in the user guide",
         },
+      },
+      userguide: {
+        type: "string",
+        description: "The current version of the user guide in markdown format",
       },
       needToSearch: {
         type: "boolean",
@@ -624,10 +628,6 @@ Parameters explained:
           required: ["collection", "query"],
         },
         description: "Array of semantic searches across different collections",
-      },
-      userGuide: {
-        type: "string",
-        description: "Current user guide version",
       },
       relatedFiles: {
         type: "array",
@@ -713,7 +713,8 @@ Parameters explained:
       },
       readyToIndexTheUserGuide: {
         type: "boolean",
-        description: "If the user guide is ready to be indexed",
+        description:
+          "If the user guide is ready to be indexed, requires the final user guide in markdown formart (field:userguide)",
       },
     },
     required: [

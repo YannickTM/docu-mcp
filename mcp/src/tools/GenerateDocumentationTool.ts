@@ -50,7 +50,7 @@ class DocumentationGenerator {
 
       // Use simplified filesystem functions to check if file exists and read content
       const fileExists = await filesystem.fileExists(filePath);
-      if (fileExists) {
+      if (fileExists && !data.fileContentKnown) {
         // If it exists, it's a file path, so load the content
         const readResult = await filesystem.readFile(filePath, "utf-8");
 
@@ -79,15 +79,26 @@ class DocumentationGenerator {
         fileContent = readResult.data.content;
         logger.info(chalk.green(`Loaded file content from: ${filePath}`));
       } else {
-        // If it doesn't exist, assume it's already code content
-        logger.error(
-          chalk.yellow(
-            `Assuming input is code content and not a file path: ${data.file.substring(
-              0,
-              50,
-            )}...`,
-          ),
-        );
+        if (data.file && data.fileContentKnown) {
+          // If fileContentKnown is true, assume it's already code content
+          logger.info(
+            chalk.blue(
+              `Assuming input is code content and not a file path: ${data.file.substring(
+                0,
+                50,
+              )}...`,
+            ),
+          );
+        } else {
+          logger.warn(
+            chalk.yellow(
+              `File does not exist or fileContentKnown is false, assuming input is code content: ${data.file.substring(
+                0,
+                50,
+              )}...`,
+            ),
+          );
+        }
       }
     } catch (error) {
       // If there's an error, assume it's already code content
@@ -563,7 +574,7 @@ Parameters explained:
 - semanticSearch: The semantic search query to find relevant information
 * The available collections to search in (codebase, documentation, diagram)
 * Available filters: [filename, directory, diagramType]
-- documentation: The documentation to be generated
+- documentation: The documentation to be generated (format: markdown)
 - chapters: The chapters to be included in the documentation
 - thought: Your current thinking step, which can include:
 * Regular analytical steps
@@ -607,6 +618,12 @@ You should:
       file: {
         type: "string",
         description: "The file path or content of the codefile to analyze",
+      },
+      fileContentKnown: {
+        type: "boolean",
+        description:
+          "If the file content is already known and does not need to be read, required a valid filepath inside of the field: file",
+        default: false,
       },
       chapters: {
         type: "array",
@@ -673,7 +690,7 @@ You should:
       },
       documentation: {
         type: "string",
-        description: "Current docuemtation version",
+        description: "Current docuemtation version (format: markdown)",
       },
       thought: {
         type: "string",
@@ -717,11 +734,13 @@ You should:
       },
       readyToIndexTheDocumentation: {
         type: "boolean",
-        description: "If the documentation is ready to be indexed",
+        description:
+          "If the documentation is ready to be indexed, requires a index final documentation in markdown format inside of the field: documentation",
       },
     },
     required: [
       "file",
+      "fileContentKnown",
       "needToReadAdditionalFiles",
       "needToSearch",
       "thought",

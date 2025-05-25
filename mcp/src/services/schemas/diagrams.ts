@@ -11,6 +11,7 @@ export const diagramsSchema: CollectionSchema = {
     vector: [], // Will be filled with appropriate size
     content: "",
     filePath: "",
+    description: "",
     type: "diagram",
     diagramType: "",
     diagramElements: [],

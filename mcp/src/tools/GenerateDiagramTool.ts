@@ -3,6 +3,8 @@ import chalk from "chalk";
 import path from "path";
 import * as filesystem from "../services/filesystem.js";
 import { logger } from "../services/logger.js";
+import { validateMermaidSyntaxWithDetailsSync } from "../helper/mermaid-helper.js";
+
 class DiagramGenerator {
   thoughtHistory: any[] = [];
   branches: any = {};
@@ -33,10 +35,27 @@ class DiagramGenerator {
     if (data.diagram && typeof data.diagram !== "string") {
       throw new Error("Invalid diagram: must be a string");
     }
-    if (data.readyToIndexTheDiagram && !data.diagram) {
-      throw new Error(
-        "Invalid diagram: must be provided when readyToIndexTheDiagram is true",
-      );
+    const diagramValidationResult = validateMermaidSyntaxWithDetailsSync(
+      data.diagram,
+    );
+    if (
+      data.readyToIndexTheDiagram &&
+      !data.diagram &&
+      diagramValidationResult.error &&
+      !data.diagramDescription
+    ) {
+      if (
+        !data.diagramDescription ||
+        typeof data.diagramDescription !== "string"
+      ) {
+        throw new Error("Invalid diagramDescription: must be a string");
+      }
+      if (!data.diagram) {
+        throw new Error("Diagram content is required when ready to index");
+      }
+      if (diagramValidationResult.error) {
+        throw new Error(`Invalid diagram syntax - ${diagramValidationResult}`);
+      }
     }
 
     // Check if file is a valid file path or code
@@ -50,7 +69,7 @@ class DiagramGenerator {
 
       // check if file exists and read content
       const fileExists = await filesystem.fileExists(filePath);
-      if (fileExists) {
+      if (fileExists && !data.fileContentKnown) {
         // If it exists, it's a file path, so load the content
         const readResult = await filesystem.readFile(filePath, "utf-8");
 
@@ -78,14 +97,17 @@ class DiagramGenerator {
         logger.info(chalk.green(`Loaded file content from: ${filePath}`));
       } else {
         // If it doesn't exist, assume it's already code content
-        logger.error(
-          chalk.yellow(
-            `Assuming input is code content and not a file path: ${data.file.substring(
-              0,
-              50,
-            )}...`,
-          ),
-        );
+        if (data.fileContentKnown) {
+          logger.info(
+            chalk.blue(
+              `Assuming file content is already known: ${data.file.substring(0, 50)}...`,
+            ),
+          );
+        } else {
+          logger.warn(
+            chalk.yellow(`File does not exist, assuming it's code content`),
+          );
+        }
       }
     } catch (error) {
       // If there's an error, assume it's already code content
@@ -311,8 +333,14 @@ class DiagramGenerator {
       data.readyToIndexTheDiagram &&
       data.file &&
       data.diagram &&
+      diagramValidationResult.valid &&
       data.diagramType
     ) {
+      logger.info(
+        chalk.blue(
+          `🔍 Indexing Diagram for file: ${data.file} with type: ${data.diagramType}`,
+        ),
+      );
       // Import required services
       const { createEmbedding, getEmbeddingDimension } = await import(
         "../services/embeddings.js"
@@ -335,7 +363,8 @@ class DiagramGenerator {
         }
         // Generate embedding for the diagram content - include diagram type in the embedded text
         // to make it more searchable by diagram type
-        const textToEmbed = `${data.diagramType}: ${data.diagram}`;
+        const textToEmbed = `${data.diagramType}: ${data.diagram}\n
+        ${data.diagramDescription ? `#Description: ${data.diagramDescription}` : ""}`;
         const result = await createEmbedding(textToEmbed);
 
         if (result.error) {
@@ -348,6 +377,7 @@ class DiagramGenerator {
         // Create metadata for the diagram
         const metadata = {
           content: data.diagram,
+          description: data.diagramDescription,
           filePath: data.file,
           type: "diagram",
           diagramType: data.diagramType,
@@ -388,6 +418,8 @@ class DiagramGenerator {
       contentOfAdditionalFilesToRead: additionalFileContent,
       semanticSearchResult: searchResults,
       diagram: data.diagram,
+      diagramDescription: data.diagramDescription,
+      diagramValidation: diagramValidationResult,
       diagramType: data.diagramType,
       diagramElements: data.diagramElements,
       thought: data.thought,
@@ -408,6 +440,7 @@ class DiagramGenerator {
       file,
       contentOfAdditionalFilesToRead,
       semanticSearchResult,
+      diagramValidation,
       diagramType,
       diagramElements,
       thoughtNumber,
@@ -461,9 +494,11 @@ class DiagramGenerator {
 ├${border}┤
 │ ${fileDisplay} │
 ├${border}┤
-│ ${contentOfAdditionalFilesToRead} │
+│ ${JSON.stringify(contentOfAdditionalFilesToRead)} │
 ├${border}┤
-│ ${semanticSearchResult} │
+│ ${JSON.stringify(semanticSearchResult)} │
+├${border}┤
+│ ${JSON.stringify(diagramValidation)} │
 ├${border}┤
 │ ${diagramType} │
 ├${border}┤
@@ -497,6 +532,7 @@ class DiagramGenerator {
             text: JSON.stringify(
               {
                 file: validatedInput.file,
+                diagramValidation: validatedInput.diagramValidation,
                 contentOfAdditionalFilesToRead:
                   validatedInput.contentOfAdditionalFilesToRead,
                 semanticSearchResult: validatedInput.semanticSearchResult,
@@ -573,6 +609,8 @@ Key features:
 
 Parameters explained:
 - file: The file path or content of the codefile to analyze
+- diagram: The diagram content in mermaid.js syntax (will be validated)
+- diagramDescription: A description of the diagram for context
 - diagramType: The type of diagram to generate (flowchart, sequenceDiagram, classDiagram, stateDiagram, conceptMap, treeDiagram)
 - additionalFilesToRead: Additional files to read for context
 - semanticSearch: The semantic search query to find relevant information
@@ -620,11 +658,26 @@ You should:
     properties: {
       file: {
         type: "string",
-        description: "File path or content of codefile to analyze",
+        description:
+          "File path or content of codefile to analyze, required for indexing",
+      },
+      fileContentKnown: {
+        type: "boolean",
+        description:
+          "If the file content is already known and does not need to be read, requires a valid file path inside of the field: file",
+      },
+      diagram: {
+        type: "string",
+        description: "Diagram content in mermaid.js syntax, will be validated",
+      },
+      diagramDescription: {
+        type: "string",
+        description:
+          "Description of the diagram for context, required for indexing",
       },
       diagramType: {
         type: "string",
-        description: "Type of diagram to generate",
+        description: "Type of diagram to generate, required for indexing",
         enum: [
           "flowchart",
           "sequenceDiagram",
@@ -750,11 +803,15 @@ You should:
       },
       readyToIndexTheDiagram: {
         type: "boolean",
-        description: "If the diagram is ready to be indexed",
+        description:
+          "If the diagram is ready to be indexed, requires the final index ready diagram in mermaidjs formart inside of the field: diagram",
       },
     },
     required: [
       "file",
+      "fileContentKnown",
+      "diagram",
+      "diagramDescription",
       "diagramType",
       "needToReadAdditionalFiles",
       "needToSearch",

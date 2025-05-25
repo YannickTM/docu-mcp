@@ -1,6 +1,6 @@
 {
   "name": "@myjungle/docu-mcp-server",
-  "version": "1.0.2",
+  "version": "1.2.0",
   "description": "docu-mcp-server MCP server",
   "type": "module",
   "bin": {
@@ -30,7 +30,8 @@
     "axios": "^1.9.0",
     "chalk": "^5.4.1",
     "chromadb": "^2.4.6",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "mermaid": "^11.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

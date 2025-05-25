@@ -15,3 +15,7 @@ prettier setup
 eslint setup
 bugfixes
 dependency updates
+
+## 1.2.0
+
+mermaid graph validation added
