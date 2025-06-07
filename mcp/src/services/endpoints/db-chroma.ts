@@ -54,7 +54,7 @@ const getCollection = async (
 
   try {
     const collections = await client.listCollections();
-    const exists = collections.some((c) => c === collectionName);
+    const exists = collections.some((c) => c.name === collectionName);
 
     if (exists) {
       const collection = await client.getCollection({ name: collectionName });
@@ -243,7 +243,7 @@ export const search = async (
       for (let i = 0; i < results.ids[0].length; i++) {
         formattedResults.push({
           // ChromaDB returns distances, convert to scores (1 - distance for cosine)
-          score: results.distances ? 1 - results.distances[0][i] : 1,
+          score: results.distances?.[0]?.[i] !== null && results.distances?.[0]?.[i] !== undefined ? 1 - results.distances[0][i]! : 1,
           // Combine metadata and document content
           payload: {
             ...results.metadatas?.[0][i],

@@ -12,6 +12,7 @@ import {
   createPoint,
   upsertPoints,
 } from "../services/vectordb.js";
+import { createSmartChunks } from "../helper/chunk.js";
 
 /**
  * Result interface for indexed directory
@@ -36,35 +37,6 @@ interface IndexDirectoryResult {
  * Tool for recursively indexing all files in a directory
  */
 class IndexDirTool {
-  /**
-   * Creates chunks from file content
-   */
-  private createChunks(
-    content: string,
-    chunkSize: number = 512,
-    overlapSize: number = 50,
-  ): string[] {
-    const chunks: string[] = [];
-    let position = 0;
-
-    while (position < content.length) {
-      const end = Math.min(position + chunkSize, content.length);
-      const chunk = content.substring(position, end);
-
-      if (chunk.trim()) {
-        chunks.push(chunk);
-      }
-
-      position = end - overlapSize;
-
-      // Safety check to prevent infinite loop
-      if (position < 0) position = end;
-      if (end >= content.length) break;
-    }
-
-    return chunks;
-  }
-
   /**
    * Process a single file and store its chunks in VectorDB
    */
@@ -104,8 +76,14 @@ class IndexDirTool {
 
       const { content, metadata: fileMetadata } = readResult.data;
 
-      // Create chunks
-      const chunks = this.createChunks(content, chunkSize, chunkOverlap);
+      // Create chunks using smart chunking based on file type
+      const fileExtension = path.extname(filePath);
+      const chunks = createSmartChunks(content, fileExtension, {
+        chunkSize,
+        overlapSize: chunkOverlap,
+        paragraphsPerChunk: Math.floor(chunkSize / 150), // Rough estimate: ~150 chars per paragraph
+        overlapParagraphs: Math.max(1, Math.floor(chunkOverlap / 150)),
+      });
 
       if (chunks.length === 0) {
         return {

@@ -12,6 +12,7 @@ import {
   createPoint,
   upsertPoints,
 } from "../services/vectordb.js";
+import { createSmartChunks } from "../helper/chunk.js";
 
 /**
  * Result interface for indexed file
@@ -35,38 +36,6 @@ interface IndexFileResult {
  * Tool for indexing a file's content into the vector database
  */
 class IndexFileTool {
-  /**
-   * Creates overlapping chunks from file content
-   */
-  private createChunks(
-    content: string,
-    chunkSize: number = 512,
-    overlapSize: number = 50,
-  ): string[] {
-    const chunks: string[] = [];
-    let position = 0;
-
-    while (position < content.length) {
-      const end = Math.min(position + chunkSize, content.length);
-      const chunk = content.substring(position, end);
-
-      // Only add non-empty chunks
-      if (chunk.trim()) {
-        chunks.push(chunk);
-      }
-
-      position = end - overlapSize;
-
-      // Prevent infinite loop for small content
-      if (position < 0) position = end;
-
-      // If we've reached the end, break
-      if (end >= content.length) break;
-    }
-
-    return chunks;
-  }
-
   /**
    * Indexes a file for RAG retrieval
    */
@@ -109,8 +78,14 @@ class IndexFileTool {
           )
         : filesystem.resolvePath(filePath);
 
-      // Create chunks
-      const chunks = this.createChunks(content, chunkSize, chunkOverlap);
+      // Create chunks using smart chunking based on file type
+      const fileExtension = path.extname(absolutePath);
+      const chunks = createSmartChunks(content, fileExtension, {
+        chunkSize,
+        overlapSize: chunkOverlap,
+        paragraphsPerChunk: Math.floor(chunkSize / 150), // Rough estimate: ~150 chars per paragraph
+        overlapParagraphs: Math.max(1, Math.floor(chunkOverlap / 150)),
+      });
 
       // Early return if no chunks
       if (chunks.length === 0) {

@@ -3,7 +3,7 @@ import chalk from "chalk";
 import path from "path";
 import * as filesystem from "../services/filesystem.js";
 import { logger } from "../services/logger.js";
-import { validateMermaidSyntaxWithDetailsSync } from "../helper/mermaid-helper.js";
+import { validateMermaidSyntaxWithDetailsSync } from "../helper/mermaid.js";
 
 class DiagramGenerator {
   thoughtHistory: any[] = [];
