@@ -4,34 +4,48 @@ sidebar_position: 1
 
 # DocuMCP Introduction
 
-Welcome to the documentation for DocuMCP, a local Model Context Protocol (MCP) server designed for intelligent code documentation generation and contextual assistance.
+Welcome to the documentation for DocuMCP, a comprehensive system for intelligent code documentation generation and contextual assistance. DocuMCP consists of two complementary MCP servers designed to work together for advanced documentation workflows.
 
 ## What is DocuMCP?
 
 DocuMCP is a TypeScript implementation of the Model Context Protocol (MCP) that serves as the foundation for seamless integration between AI systems and your codebase. It functions as a **standardized communication layer** between language models (like Claude) and your code repositories.
+
+The system includes:
+
+1. **DocuMCP Server** - The core documentation generation server with RAG capabilities
+2. **DocuMCP Manager** - A supervisor server for coordinating multiple documentation agents
 
 Using Retrieval-Augmented Generation (RAG) with a local vector database, DocuMCP enhances code understanding by providing:
 
 - Automatic and contextual documentation of codebases
 - Semantic search and retrieval of code snippets
 - Integration with local coding assistants
+- Multi-agent coordination for large-scale documentation projects
 
 ## Project Architecture
 
-DocuMCP follows a modular architecture:
+DocuMCP follows a modular monorepo architecture:
 
 ```
-documcp/
-├── mcp/                # TypeScript MCP server implementation
+DocuMCP/
+├── mcp/                # Core DocuMCP server
 │   ├── src/            # Source code
-│   │   ├── rag/        # RAG implementation
-│   │   ├── server/     # Server configuration
-│   │   ├── tools/      # MCP tools
-│   │   └── utils/      # Utility functions
+│   │   ├── services/   # Vector DB & embedding services
+│   │   ├── tools/      # MCP tools for documentation
+│   │   ├── helper/     # Utility functions
+│   │   └── schemas/    # Data schemas
 │   └── ...             # Configuration files
-├── qdrant/             # Vector database
+├── manager/            # DocuMCP Manager server
+│   ├── src/            # Source code
+│   │   ├── services/   # Agent management services
+│   │   ├── tools/      # Supervisor & coordination tools
+│   │   └── ...         # Shared components with mcp/
+│   └── ...             # Configuration files
+├── qdrant/             # Vector database (Qdrant)
 │   └── docker-compose.yml
-└── docs/               # Documentation
+├── chromadb/           # Alternative vector database
+│   └── docker-compose.yml
+└── docusaurus/         # Documentation website
 ```
 
 ## Getting Started

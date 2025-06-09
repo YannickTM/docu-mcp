@@ -5,11 +5,16 @@ title: Overview
 
 # MCP Tools
 
-DocuMCP provides a set of tools that can be called by MCP clients to perform specific actions. These tools are designed for various tasks including file operations, search, code analysis, documentation generation, and diagram creation.
+DocuMCP provides two complementary sets of tools through its two MCP servers:
+
+1. **DocuMCP Server**: Core documentation generation tools for file operations, search, code analysis, documentation generation, and diagram creation
+2. **DocuMCP Manager**: Agent orchestration tools for coordinating multiple documentation agents, plus all the DocuMCP server tools
 
 ## Current Implementation Status
 
 DocuMCP is under active development, with the following tools currently implemented:
+
+### Core Documentation Tools (Available in both servers)
 
 - **Read File**: Reads content from files with metadata support
 - **Write File**: Writes content to files with configurable options
@@ -22,13 +27,39 @@ DocuMCP is under active development, with the following tools currently implemen
 - **Search Documentation**: Retrieves previously generated documentation by semantic search
 - **Generate Diagram**: Creates diagrams with sequential thinking approach
 - **Search Diagrams**: Retrieves previously generated diagrams by semantic search
+- **Search User Guide**: Searches generated user guides with filtering
 - **Explain Code**: Analyzes code with sequential thinking approach
+- **Generate User Guide**: Creates user-friendly guides from multiple sources
+- **Merge Documentation**: Consolidates documentation from multiple sources
+- **Merge Diagrams**: Combines related diagrams into comprehensive views
+
+### Agent Orchestration Tools (Manager server only)
+
+- **Spawn Agent**: Creates and launches Claude Code sub-agents for parallel documentation tasks
+- **Manage Agent**: Monitors, controls, and retrieves results from running agents
 
 Additional tools are in development and will be implemented in future releases.
 
 ## Tool Categories
 
 The MCP tools are organized into the following categories:
+
+### Agent Orchestration Tools (Manager Server Only)
+
+Tools for managing multiple documentation agents:
+
+- **Spawn Agent**: Creates Claude Code sub-agents with:
+  - Configurable system prompts and tool restrictions
+  - Model selection (default: claude-3-7-sonnet, optional: opus models)
+  - Fire-and-forget or wait-for-completion modes
+  - Structured JSON output with cost and performance metrics
+  - Automatic DocuMCP server integration for all sub-agents
+- **Manage Agent**: Controls agent lifecycle with:
+  - Status checking and progress monitoring
+  - Agent termination capabilities
+  - List all active agents
+  - Retrieve results and outputs
+  - Wait for completion with timeout
 
 ### File System Tools
 
@@ -56,6 +87,9 @@ Tools for documentation generation and visualization:
 - [Generate Documentation](./generate-documentation.md): Creates comprehensive documentation using sequential thinking
 - [Explain Code](./explain-code.md): Analyzes and explains code using sequential thinking
 - [Generate Diagram](./generate-diagram.md): Creates architecture or flow diagrams with sequential thinking
+- [Generate User Guide](./generate-user-guide.md): Synthesizes user-friendly guides from multiple sources
+- [Merge Documentation](./merge-documentation.md): Consolidates documentation from various sources
+- [Merge Diagrams](./merge-diagram.md): Combines related diagrams into unified views
 
 ## Vector Database Integration
 
@@ -151,40 +185,106 @@ This approach enables:
 - Branching into alternative approaches
 - Dynamic adjustment based on complexity
 
-## MCP Server Integration
+## Multi-Agent Architecture
 
-The tools are registered with the MCP server in `/mcp/src/index.ts`:
+The Manager server enables powerful multi-agent workflows:
+
+1. **Parallel Processing**: Spawn multiple agents to document different parts of a large codebase simultaneously
+2. **Shared Vector Database**: All agents contribute to the same knowledge base
+3. **Task Specialization**: Assign specific documentation tasks to different agents
+4. **Result Aggregation**: Collect and consolidate outputs from all agents
+5. **Cost Optimization**: Monitor resource usage and optimize model selection
+
+### Example Multi-Agent Workflow
 
 ```typescript
-// Initialize tools
+// Spawn multiple agents for comprehensive documentation
+const agents = [
+  // Agent 1: Analyze and explain core services
+  spawnAgent({
+    task: "Analyze src/services and generate technical documentation",
+    allowedTools: [
+      "Read",
+      "Glob",
+      "mcp__docu-mcp__explain_code",
+      "mcp__docu-mcp__generate_documentation",
+    ],
+    model: "claude-opus-4-20250514",
+  }),
+
+  // Agent 2: Create architecture diagrams
+  spawnAgent({
+    task: "Generate system architecture diagrams for all components",
+    allowedTools: [
+      "Read",
+      "mcp__docu-mcp__generate_diagram",
+      "mcp__docu-mcp__merge_diagram",
+    ],
+  }),
+
+  // Agent 3: Generate user guide
+  spawnAgent({
+    task: "Create a comprehensive user guide from all documentation",
+    allowedTools: [
+      "mcp__docu-mcp__search_documentation",
+      "mcp__docu-mcp__generate_user_guide",
+    ],
+  }),
+];
+
+// Monitor and collect results
+for (const agent of agents) {
+  const result = await manageAgent({ action: "wait", agentId: agent.agentId });
+  console.log(`Agent ${agent.agentId} completed with cost: ${result.cost}`);
+}
+```
+
+## MCP Server Integration
+
+The tools are registered with the MCP servers:
+
+````typescript
+### DocuMCP Server (`/mcp/src/index.ts`)
+
+```typescript
+// Initialize documentation tools
 const readFileTool = new ReadFileTool();
 const writeFileTool = new WriteFileTool();
-const readDirTool = new ReadDirTool();
-const createDirTool = new CreateDirTool();
-const indexFileTool = new IndexFileTool();
-const indexDirTool = new IndexDirTool();
-const searchCodebaseTool = new SearchCodebaseTool();
 const explainCodeTool = new CodeExplainer();
-const generateDiagramTool = new DiagramGenerator();
-const searchDiagramTool = new SearchDiagramTool();
-const searchDocumentationTool = new SearchDocumentationTool();
-const generateDocumentationTool = new DocumentationGenerator();
+// ... other tools
 
-// Register tools in the request handler
+// Register tools
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     CODE_EXPLAIN_TOOL,
     DIAGRAM_TOOL,
     DOCUMENTATION_TOOL,
+    // ... all documentation tools
+  ],
+}));
+````
+
+### Manager Server (`/manager/src/index.ts`)
+
+```typescript
+// Initialize agent orchestration tools
+const spawnAgentTool = new SpawnAgentTool();
+const manageAgentTool = new ManageAgentTool();
+
+// Also initialize all documentation tools
+const readFileTool = new ReadFileTool();
+// ... other tools
+
+// Register both sets of tools
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    // Supervisor tools
+    SPAWN_AGENT_TOOL,
+    MANAGE_AGENT_TOOL,
+    // Documentation tools
     READ_DIR_TOOL,
     WRITE_FILE_TOOL,
-    CREATE_DIR_TOOL,
-    READ_FILE_TOOL,
-    INDEX_FILE_TOOL,
-    INDEX_DIR_TOOL,
-    SEARCH_CODEBASE_TOOL,
-    SEARCH_DIAGRAM_TOOL,
-    SEARCH_DOCUMENTATION_TOOL,
+    // ... all other DocuMCP tools
   ],
 }));
 ```

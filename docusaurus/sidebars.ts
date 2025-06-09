@@ -72,6 +72,11 @@ const sidebars: SidebarsConfig = {
             "mcp/tools/generate-user-guide",
           ],
         },
+        {
+          type: "category",
+          label: "Agent Orchestration Tools",
+          items: ["mcp/tools/spawn-agent", "mcp/tools/manage-agent"],
+        },
       ],
     },
   ],

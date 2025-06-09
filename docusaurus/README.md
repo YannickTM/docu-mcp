@@ -6,12 +6,30 @@ This website is built using [Docusaurus](https://docusaurus.io/), a modern stati
 
 The documentation covers:
 
+### Core Concepts
+
 - Project fundamentals (MCP, RAG, Vector Databases)
+- Multi-agent architecture and orchestration
 - Getting started guides
-- Tool documentation
-- Client integration
-- Configuration options
-- Troubleshooting
+
+### Server Documentation
+
+- **DocuMCP Server**: Core documentation generation with RAG capabilities
+- **DocuMCP Manager**: Agent orchestration for parallel documentation workflows
+
+### Tool Documentation
+
+- File system tools (read, write, create, index)
+- Search tools (codebase, documentation, diagrams, user guides)
+- Documentation tools (explain code, generate docs/diagrams, merge content)
+- Agent orchestration tools (spawn and manage sub-agents)
+
+### Integration & Configuration
+
+- Client integration with Claude Desktop
+- Vector database configuration (LanceDB, ChromaDB, Qdrant)
+- Embedding provider options
+- Troubleshooting guides
 
 ## Installation
 

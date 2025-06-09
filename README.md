@@ -1,10 +1,17 @@
 # DocuMCP
 
-🤖 **An MCP server for intelligent code documentation generation with RAG capabilities**
+🤖 **A comprehensive MCP system for intelligent code documentation generation with RAG capabilities and multi-agent orchestration**
 
-DocuMCP enables Claude to generate, search, and manage documentation for your codebase using vector embeddings and semantic search. It provides tools for creating user guides, technical documentation, code explanations, and architectural diagrams.
+DocuMCP consists of two complementary MCP servers:
+
+1. **DocuMCP Server**: Core documentation generation with vector embeddings and semantic search
+2. **DocuMCP Manager**: Agent orchestration for parallel documentation workflows using multiple Claude Code sub-agents
+
+Together, they enable Claude to generate, search, and manage documentation for your codebase at any scale, from single files to entire enterprise applications.
 
 ## ✨ Features
+
+### Core Documentation Features
 
 - 📚 Generate and update documentation based on your codebase
 - 🔍 Semantic search across code, documentation, and diagrams
@@ -12,6 +19,14 @@ DocuMCP enables Claude to generate, search, and manage documentation for your co
 - 📝 Generate user guides
 - 💾 Support for multiple vector databases (LanceDB, ChromaDB, Qdrant)
 - 🧠 Flexible embedding providers (built-in or Ollama)
+
+### Multi-Agent Orchestration (Manager Server)
+
+- 🤖 Spawn multiple Claude Code sub-agents for parallel processing
+- 📊 Monitor agent status and retrieve results
+- 🔄 Shared vector database across all agents
+- ⚡ Scale documentation generation for large codebases
+- 💰 Track costs and performance metrics
 
 ## 🚀 Quick Start
 
@@ -24,18 +39,33 @@ Add the following to your Claude Desktop configuration:
 - **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
+#### For Core DocuMCP Server:
+
 ```json
 {
   "mcpServers": {
     "docu-mcp": {
       "command": "npx",
-      "args": ["@myjungle/docu-mcp-server"]
+      "args": ["-y", "@myjungle/docu-mcp-server"]
     }
   }
 }
 ```
 
-That's it! Restart Claude Desktop and DocuMCP will be available.
+#### For DocuMCP Manager (Agent Orchestration):
+
+```json
+{
+  "mcpServers": {
+    "docu-mcp-manager": {
+      "command": "npx",
+      "args": ["-y", "@myjungle/docu-mcp-manager"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop and both servers will be available.
 
 ### Alternative Installation Methods
 
@@ -61,10 +91,16 @@ cd docu-mcp
 npm install
 ```
 
-### 2. Build the MCP Server
+### 2. Build the Servers
 
 ```bash
+# Build DocuMCP Server
 cd mcp
+npm run build
+cd ..
+
+# Build DocuMCP Manager
+cd manager
 npm run build
 cd ..
 ```
@@ -76,10 +112,12 @@ Add the following to your Claude Desktop configuration:
 - **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
+#### Configuration for Both Servers:
+
 ```json
 {
   "mcpServers": {
-    "docuassistant": {
+    "docu-mcp": {
       "command": "node",
       "env": {
         "VECTOR_DB_PROVIDER": "qdrant",
@@ -90,10 +128,25 @@ Add the following to your Claude Desktop configuration:
         "OLLAMA_URL": "http://localhost:11434"
       },
       "args": ["/absolute/path/to/DocuMCP/mcp/dist/index.js"]
+    },
+    "docu-mcp-manager": {
+      "command": "node",
+      "env": {
+        "VECTOR_DB_PROVIDER": "qdrant",
+        "QDRANT_URL": "http://localhost:6333",
+        "EMBEDDING_PROVIDER": "ollama",
+        "EMBEDDING_MODEL": "bge-m3:latest",
+        "EMBEDDING_DIMENSION": "1024",
+        "OLLAMA_URL": "http://localhost:11434",
+        "SUB_AGENT_MODEL": "claude-3-7-sonnet-latest"
+      },
+      "args": ["/absolute/path/to/DocuMCP/manager/dist/index.js"]
     }
   }
 }
 ```
+
+**Important**: Both servers should use the same vector database configuration to enable shared access.
 
 ### 4. Start Required Services (if using external providers)
 
@@ -134,7 +187,7 @@ Restart Claude Desktop to load the new configuration.
 
 ## 🔧 Available Tools
 
-DocuMCP provides the following tools to Claude:
+### DocuMCP Server Tools
 
 - 📁 **File Operations**: `read_file`, `write_file`, `create_directory`, `read_directory`
 - 🔎 **Search Tools**: `search_codebase`, `search_documentation`, `search_diagram`, `search_user_guide`
@@ -142,6 +195,12 @@ DocuMCP provides the following tools to Claude:
 - 📊 **Diagrams**: `generate_diagram`, `merge_diagram`
 - 🗃️ **Indexing**: `index_file`, `index_directory`
 - 🔀 **Merging**: `merge_documentation`
+
+### DocuMCP Manager Tools (includes all above plus):
+
+- 🤖 **Agent Orchestration**:
+  - `spawn_agent`: Create Claude Code sub-agents for documentation tasks
+  - `manage_agent`: Monitor, control, and retrieve results from agents
 
 ## 📋 Requirements
 

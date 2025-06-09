@@ -1,12 +1,12 @@
 {
   "name": "docu-mcp",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": true,
   "description": "Documentation project with MCP server and RAG capabilities",
   "workspaces": [
     "docusaurus",
     "mcp",
-    "qdrant"
+    "manager"
   ],
   "scripts": {
     "start": "",

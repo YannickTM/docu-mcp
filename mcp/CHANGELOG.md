@@ -24,5 +24,6 @@ mermaid graph validation added
 
 dependency updates
 improved chunking:
-* code gets split up based on tokens
-* text content like md files, indexed based on paragraphs
+
+- code gets split up based on tokens
+- text content like md files, indexed based on paragraphs

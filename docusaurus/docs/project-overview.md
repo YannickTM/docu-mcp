@@ -6,19 +6,34 @@ sidebar_position: 3
 
 ## Project Concept
 
-DocuMCP is designed to function as a local development assistant for automatic and contextual documentation of codebases. The project follows the high-level concept described below.
+DocuMCP is designed to function as a comprehensive documentation generation system with two complementary components:
+
+1. **DocuMCP Server** - A local development assistant for automatic and contextual documentation of codebases
+2. **DocuMCP Manager** - A supervisor server that coordinates multiple documentation agents for large-scale projects
+
+The project follows the high-level concept described below.
 
 ### Purpose & Vision
 
-The MCP (Model Context Protocol) server aims to:
+The DocuMCP system aims to:
 
 - Generate automatic and contextual documentation of codebases
 - Provide retrieval-augmented generation (RAG) capabilities for enhanced developer productivity
 - Seamlessly integrate with local coding assistants like Claude code models
 - Leverage detailed documentation and semantic code insights without external dependencies
 - Support multiple vector database backends for flexibility in deployment
+- Enable multi-agent coordination for comprehensive documentation of large projects
+- Facilitate parallel documentation generation through intelligent task distribution
 
 ### Core Components
+
+#### Multi-Agent Architecture
+
+- **DocuMCP Manager** orchestrates multiple Claude Code sub-agents
+- Sub-agents run in parallel to document different parts of large codebases
+- All agents share a common vector database for collaborative documentation
+- Intelligent task distribution based on codebase structure and complexity
+- Real-time monitoring and management of documentation workflows
 
 #### Retrieval-Augmented Generation (RAG)
 
@@ -43,16 +58,17 @@ The MCP (Model Context Protocol) server aims to:
 
 ### Technical Stack
 
-| Component                  | Implementation                    | Role                                   |
-| -------------------------- | --------------------------------- | -------------------------------------- |
-| Programming Language       | TypeScript                        | Main language for MCP server           |
-| Runtime Environment        | Node.js                           | Server framework                       |
-| Protocol                   | Model Context Protocol            | Standardized communication layer       |
-| Vector Database            | ChromaDB, LanceDB, Qdrant         | Multi-backend vector DB support        |
-| Embedding Generation       | MiniLM (local), Ollama (optional) | Text to vector conversion              |
-| Persistence & Storage      | Local filesystem                  | Storing configuration, logs, metadata  |
-| Documentation Format       | Markdown                          | Generated documentation format         |
-| Code Assistant Integration | Claude-like agent                 | Consumes MCP API for development tasks |
+| Component                  | Implementation                    | Role                                     |
+| -------------------------- | --------------------------------- | ---------------------------------------- |
+| Programming Language       | TypeScript                        | Main language for both MCP servers       |
+| Runtime Environment        | Node.js                           | Server framework                         |
+| Protocol                   | Model Context Protocol            | Standardized communication layer         |
+| Vector Database            | ChromaDB, LanceDB, Qdrant         | Multi-backend vector DB support (shared) |
+| Embedding Generation       | MiniLM (local), Ollama (optional) | Text to vector conversion                |
+| Persistence & Storage      | Local filesystem                  | Storing configuration, logs, metadata    |
+| Documentation Format       | Markdown                          | Generated documentation format           |
+| Code Assistant Integration | Claude-like agent                 | Consumes MCP API for development tasks   |
+| Agent Orchestration        | Claude Code sub-processes         | Parallel documentation generation        |
 
 ## Current Implementation
 
@@ -62,7 +78,7 @@ The current implementation includes:
 
 ```
 /
-├── mcp/                  # TypeScript MCP server implementation
+├── mcp/                  # Core DocuMCP server implementation
 │   ├── src/              # Source code
 │   │   ├── index.ts      # Main server entry point
 │   │   ├── tools/        # MCP tools implementation
@@ -93,7 +109,19 @@ The current implementation includes:
 │   │   │       └── db-qdrant.ts      # Qdrant integration
 │   ├── package.json      # Dependencies
 │   └── tsconfig.json     # TypeScript configuration
-├── chromadb_data/        # ChromaDB persistent storage (when used)
+├── manager/              # DocuMCP Manager server implementation
+│   ├── src/              # Source code
+│   │   ├── index.ts      # Manager server entry point
+│   │   ├── tools/        # Manager-specific tools
+│   │   │   ├── SpawnAgentTool.ts     # Creates Claude Code sub-agents
+│   │   │   ├── ManageAgentTool.ts    # Monitors and controls agents
+│   │   │   └── ...                   # Shared tools from mcp/
+│   │   └── services/     # Agent management services
+│   │       └── agentManager.ts       # Core agent orchestration logic
+│   ├── package.json      # Dependencies
+│   └── tsconfig.json     # TypeScript configuration
+├── chromadb/             # ChromaDB Docker configuration
+│   └── docker-compose.yml # ChromaDB Docker setup
 ├── qdrant/               # Qdrant vector database configuration
 │   └── docker-compose.yml # Qdrant Docker setup
 └── docusaurus/          # Documentation site
@@ -161,9 +189,68 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
 
+### Manager Server
+
+The Manager server extends the base DocuMCP functionality with agent orchestration capabilities:
+
+```typescript
+const server = new Server(
+  {
+    name: "Manager-Assistant",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  },
+);
+
+// Supervisor-specific tools
+const spawnAgentTool = new SpawnAgentTool();
+const manageAgentTool = new ManageAgentTool();
+
+// Register both supervisor and documentation tools
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [
+    // Supervisor tools
+    SPAWN_AGENT_TOOL,
+    MANAGE_AGENT_TOOL,
+    // Documentation tools (shared with DocuMCP)
+    READ_DIR_TOOL,
+    WRITE_FILE_TOOL,
+    // ... all other DocuMCP tools
+  ],
+}));
+```
+
+#### Agent Management Architecture
+
+The Manager server includes:
+
+- **Agent Manager Service**: Core orchestration logic for spawning and managing Claude Code sub-agents
+- **Process Management**: Handles Claude Code process lifecycle with proper resource cleanup
+- **Shared Database Access**: All agents use the same vector database configuration
+- **Task Distribution**: Intelligent assignment of documentation tasks to sub-agents
+- **Result Aggregation**: Collects and consolidates outputs from multiple agents
+
 ### Implemented Tools
 
 The current implementation includes the following tools:
+
+#### Agent Orchestration Tools (Manager Server Only)
+
+- **Spawn Agent Tool**: Creates and launches Claude Code sub-agents with configurable parameters
+  - Supports custom system prompts and tool restrictions
+  - Configurable models, timeouts, and execution modes
+  - Returns structured JSON output with cost and performance metrics
+  - Enables both fire-and-forget and wait-for-completion modes
+- **Manage Agent Tool**: Monitors and controls running agents
+  - Check agent status and progress
+  - Terminate running agents
+  - List all active agents
+  - Retrieve agent results and outputs
+  - Wait for agent completion with timeout
 
 #### File System Tools
 
@@ -348,12 +435,17 @@ The project follows a phased implementation approach:
 - ✅ Implement SearchUserGuideTool with advanced filtering
 - 🔄 Implement ImproveUserGuideTool for refining existing documentation
 
-### Phase D: Documentation Output
+### Phase D: Multi-Agent Orchestration (Completed)
 
-- 🔄 Write Documentation into docs folder
-- 🔄 Automate Docusaurus Setup
+- ✅ Implement DocuMCP Manager server
+- ✅ Add SpawnAgentTool for creating Claude Code sub-agents
+- ✅ Add ManageAgentTool for agent lifecycle management
+- ✅ Implement shared vector database architecture
+- ✅ Enable parallel documentation generation workflows
 
 ### Phase E: Integration & Polish
 
 - 🔄 Improve error handling and stability
 - 🔄 Complete the Docusaurus documentation site
+- 🔄 Optimize multi-agent coordination patterns
+- 🔄 Add workflow templates for common documentation scenarios
